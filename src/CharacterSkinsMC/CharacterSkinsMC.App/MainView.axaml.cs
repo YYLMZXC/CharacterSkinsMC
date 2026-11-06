@@ -30,12 +30,16 @@ public partial class MainView : UserControl
 	private double m_yawDegrees = 35;
 	private bool m_suppressYawEvent;
 	private bool m_uiReady;
+	private bool m_compactLayout;
 	private readonly Dictionary<ScPlayerClass, ScModel> m_models = new();
 	private readonly DispatcherTimer m_timer;
 	private readonly Stopwatch m_rotationClock = Stopwatch.StartNew();
 
 	private const double MinRotationSpeed = 5.0;
 	private const double MaxRotationSpeed = 180.0;
+	private const double CompactLayoutThreshold = 800.0;
+	private const double SidePanelWidth = 320.0;
+	private const double SidePanelCompactHeight = 320.0;
 
 	private ScPlayerClass CurrentPlayerClass =>
 		PlayerClassCombo.SelectedIndex == 1 ? ScPlayerClass.Female : ScPlayerClass.Male;
@@ -96,6 +100,14 @@ public partial class MainView : UserControl
 			}
 		};
 		this.DetachedFromVisualTree += (_, _) => m_timer.Stop();
+		this.PropertyChanged += (_, e) =>
+		{
+			if (e.Property == BoundsProperty)
+			{
+				ApplyResponsiveLayout(Bounds.Width);
+			}
+		};
+		this.AttachedToVisualTree += (_, _) => ApplyResponsiveLayout(Bounds.Width);
 		PlayerClassCombo.SelectionChanged += OnPlayerClassChanged;
 		// 所有 XAML 命名控件都已填充，才允许事件处理器访问列表与预览控件。
 		m_uiReady = true;
@@ -121,6 +133,49 @@ public partial class MainView : UserControl
 			CompareSkinCombo.Items.Add(skin.Caption);
 		}
 		CompareSkinCombo.SelectedIndex = 0;
+	}
+
+	/// <summary>窄屏改为「侧栏在上、标签页在下」，宽屏恢复左右两栏，避免固定侧栏把内容区挤没。</summary>
+	private void ApplyResponsiveLayout(double width)
+	{
+		if (!m_uiReady || width <= 0)
+		{
+			return;
+		}
+		bool compact = width < CompactLayoutThreshold;
+		if (compact == m_compactLayout)
+		{
+			return;
+		}
+		m_compactLayout = compact;
+		if (compact)
+		{
+			BodyGrid.ColumnDefinitions[0].Width = new GridLength(0);
+			BodyGrid.ColumnDefinitions[1].Width = GridLength.Star;
+			BodyGrid.RowDefinitions[0].Height = new GridLength(SidePanelCompactHeight);
+			BodyGrid.RowDefinitions[1].Height = GridLength.Star;
+			Grid.SetColumnSpan(SidePanel, 2);
+			Grid.SetRow(SidePanel, 0);
+			Grid.SetColumn(SidePanel, 0);
+			Grid.SetColumnSpan(MainTabs, 2);
+			Grid.SetRow(MainTabs, 1);
+			Grid.SetColumn(MainTabs, 0);
+			MainTabs.Margin = new Thickness(4, 4, 0, 0);
+		}
+		else
+		{
+			BodyGrid.ColumnDefinitions[0].Width = new GridLength(SidePanelWidth);
+			BodyGrid.ColumnDefinitions[1].Width = GridLength.Star;
+			BodyGrid.RowDefinitions[0].Height = GridLength.Star;
+			BodyGrid.RowDefinitions[1].Height = GridLength.Auto;
+			Grid.SetColumnSpan(SidePanel, 1);
+			Grid.SetRow(SidePanel, 0);
+			Grid.SetColumn(SidePanel, 0);
+			Grid.SetColumnSpan(MainTabs, 1);
+			Grid.SetRow(MainTabs, 0);
+			Grid.SetColumn(MainTabs, 1);
+			MainTabs.Margin = new Thickness(4, 0, 0, 0);
+		}
 	}
 
 	/// <summary>桌面把数据目录放在程序旁，Android 等沙盒平台回退到应用私有数据目录。</summary>

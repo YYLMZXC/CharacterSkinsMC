@@ -2,7 +2,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="CharacterSkinsMC.App.MainView">
 	<Grid RowDefinitions="Auto,*,Auto">
-		<StackPanel Orientation="Horizontal" Margin="6,4" Spacing="6">
+		<!-- 窄屏时按钮自动换行，避免工具栏右侧按钮被裁掉。 -->
+		<WrapPanel Margin="6,4">
+			<WrapPanel.Styles>
+				<Style Selector="Button">
+					<Setter Property="Margin" Value="0,0,6,4" />
+				</Style>
+			</WrapPanel.Styles>
 			<Button Content="打开皮肤" Click="OnOpenFilesClick" />
 			<Button Content="保存当前 .scskin" Click="OnSaveCurrentClick" />
 			<Button Content="批量转换" Click="OnBatchConvertClick" />
@@ -10,9 +16,10 @@
 			<Button x:Name="OpenInputButton" Content="打开输入目录" Click="OnOpenInputDirectoryClick" />
 			<Button Content="选择输出目录" Click="OnChooseOutputClick" />
 			<Button Content="关于" Click="OnAboutClick" />
-			</StackPanel>
-		<Grid Grid.Row="1" ColumnDefinitions="320,*">
-			<Grid RowDefinitions="Auto,*,Auto">
+		</WrapPanel>
+		<!-- 宽屏保持左右两栏；窄屏由 ApplyResponsiveLayout 切成上下两行。 -->
+		<Grid x:Name="BodyGrid" Grid.Row="1" ColumnDefinitions="320,*" RowDefinitions="*,Auto">
+			<Grid x:Name="SidePanel" Grid.Row="0" Grid.Column="0" RowDefinitions="Auto,*,Auto">
 				<TextBlock Margin="6,4" TextWrapping="Wrap" Foreground="#FF505864"
 				           Text="输入目录：CharacterSkinsMC（自动创建）&#x0a;也可把 PNG 直接拖入下方列表" />
 				<ListBox x:Name="FilesList" Grid.Row="1" Margin="6,0" SelectionChanged="OnFileSelected" />
@@ -44,13 +51,17 @@
 					</StackPanel>
 				</StackPanel>
 			</Grid>
-			<TabControl Grid.Column="1" Margin="4,0,0,0">
+			<TabControl x:Name="MainTabs" Grid.Row="0" Grid.Column="1" Margin="4,0,0,0">
 				<TabItem Header="MC 皮肤">
 					<DockPanel>
 						<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
 						           Text="Minecraft 原版 64×64 双层皮肤布局：蓝框为基础层、橙框为第二层，取自 MC 分区表。" />
-						<ScrollViewer Background="White">
-							<Image x:Name="McPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+						<ScrollViewer Background="White" HorizontalScrollBarVisibility="Disabled"
+						              VerticalScrollBarVisibility="Auto">
+							<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+							         HorizontalAlignment="Left" VerticalAlignment="Top">
+								<Image x:Name="McPreviewImage" Stretch="None" Margin="8" />
+							</Viewbox>
 						</ScrollViewer>
 					</DockPanel>
 				</TabItem>
@@ -66,22 +77,26 @@
 						<TextBlock DockPanel.Dock="Top" x:Name="CompareStats" Margin="6,0,6,4" TextWrapping="Wrap"
 						           Foreground="#FF505864" />
 						<Grid>
-							<ScrollViewer x:Name="SingleAtlasView" Background="White">
-								<Image x:Name="ScPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+							<ScrollViewer x:Name="SingleAtlasView" Background="White"
+							              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+								<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+								         HorizontalAlignment="Left" VerticalAlignment="Top">
+									<Image x:Name="ScPreviewImage" Stretch="None" Margin="8" />
+								</Viewbox>
 							</ScrollViewer>
 							<ScrollViewer x:Name="CompareAtlasView" Background="White" IsVisible="False"
 							              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
 								<Grid Margin="8" ColumnDefinitions="*,*,*" VerticalAlignment="Top">
 									<StackPanel Grid.Column="0" Margin="0,0,8,0" Spacing="4">
-										<TextBlock Text="转译结果" FontWeight="Bold" />
+										<TextBlock Text="转译结果" FontWeight="Bold" TextWrapping="Wrap" />
 										<Image x:Name="CompareCurrentImage" Stretch="Uniform" VerticalAlignment="Top" />
 									</StackPanel>
 									<StackPanel Grid.Column="1" Margin="0,0,8,0" Spacing="4">
-										<TextBlock Text="内置默认皮肤" FontWeight="Bold" />
+										<TextBlock Text="内置默认皮肤" FontWeight="Bold" TextWrapping="Wrap" />
 										<Image x:Name="CompareReferenceImage" Stretch="Uniform" VerticalAlignment="Top" />
 									</StackPanel>
 									<StackPanel Grid.Column="2" Spacing="4">
-										<TextBlock Text="差异（灰=一致，红=不同）" FontWeight="Bold" />
+										<TextBlock Text="差异（灰=一致，红=不同）" FontWeight="Bold" TextWrapping="Wrap" />
 										<Image x:Name="CompareDiffImage" Stretch="Uniform" VerticalAlignment="Top" />
 									</StackPanel>
 								</Grid>
@@ -93,8 +108,11 @@
 					<DockPanel>
 						<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
 						           Text="Minecraft 立方体人物模型，含第二层外壳；只用于查看输入皮肤，与右侧 SC 3D 预览相互独立。" />
-						<ScrollViewer>
-							<Image x:Name="ModelPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+						<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+							<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+							         HorizontalAlignment="Left" VerticalAlignment="Top">
+								<Image x:Name="ModelPreviewImage" Stretch="None" Margin="8" />
+							</Viewbox>
 						</ScrollViewer>
 					</DockPanel>
 				</TabItem>
@@ -102,8 +120,11 @@
 					<DockPanel>
 						<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
 						           Text="Survivalcraft 专属预览：使用真实 HumanMale / HumanFemale.dae 三角形与皮肤图集 UV 渲染，按左侧性别切换模型。" />
-						<ScrollViewer>
-							<Image x:Name="ScModelPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+						<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+							<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+							         HorizontalAlignment="Left" VerticalAlignment="Top">
+								<Image x:Name="ScModelPreviewImage" Stretch="None" Margin="8" />
+							</Viewbox>
 						</ScrollViewer>
 					</DockPanel>
 				</TabItem>
@@ -115,8 +136,12 @@
 							<ListBox x:Name="DefaultSkinList" SelectionChanged="OnDefaultSkinSelected" />
 							<Button Content="导出选中皮肤 .scskin" Click="OnExportDefaultSkinClick" />
 						</StackPanel>
-						<ScrollViewer Grid.Row="1" Grid.Column="1" Background="White">
-							<Image x:Name="DefaultSkinPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+						<ScrollViewer Grid.Row="1" Grid.Column="1" Background="White"
+						              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+							<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+							         HorizontalAlignment="Left" VerticalAlignment="Top">
+								<Image x:Name="DefaultSkinPreviewImage" Stretch="None" Margin="8" />
+							</Viewbox>
 						</ScrollViewer>
 					</Grid>
 				</TabItem>

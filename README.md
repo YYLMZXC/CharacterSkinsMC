@@ -35,6 +35,8 @@ Minecraft 皮肤 → Survivalcraft（生存战争）皮肤转换工具。
 
 依赖 .NET 11 SDK（含 Android workload）。工具位于主仓 `tools/` 下，用自身的 `src/CharacterSkinsMC/Directory.Packages.props` 关闭中央包管理，避免还原时向上命中主仓配置而触发 `NU1008`。
 
+Android 启动 Activity 必须沿用 AppCompat 系主题（Avalonia 12 的 `AvaloniaMainActivity` 继承 `AppCompatActivity`）；改用平台 `Theme.Material` 会在 `onCreate` 的 `setContentView` 阶段抛 `IllegalStateException`，表现为启动即闪退。
+
 ```powershell
 # 桌面 + Android 双目标
 dotnet build src/CharacterSkinsMC/CharacterSkinsMC.App/CharacterSkinsMC.App.csproj -f net11.0
