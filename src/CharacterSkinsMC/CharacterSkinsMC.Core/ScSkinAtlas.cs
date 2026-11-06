@@ -96,12 +96,15 @@ public static class ScSkinAtlas
 		P("右腿侧面", 54, 38, 7, 26, McBodyPart.RightLeg, McFace.Right)
 	};
 
-	// 宽手（Steve）：手臂盒 4×4×12，各面宽度与 SC 手臂块一一对应，逐像素直拷。
+	// 宽手（Steve）：手臂盒 4×4×12。模型手臂是三段 UV 岛：上侧长条（正面）、
+	// 下侧长条（背面）与中央内外侧长条，左右臂对称，逐段直拷。
+	// 此前漏掉右臂下侧长条最右一列（x=26），游戏里右臂背面被渲染成黑块。
 	private static readonly ScRegion[] s_classicArmRegions = new ScRegion[]
 	{
 		P("左臂正面", 0, 15, 4, 23, McBodyPart.LeftArm, McFace.Front),
 		P("右臂正面", 18, 15, 4, 23, McBodyPart.RightArm, McFace.Front),
-		P("手臂中央长条", 21, 15, 5, 49, McBodyPart.RightArm, McFace.Back),
+		P("手臂中央长条", 21, 39, 5, 25, McBodyPart.RightArm, McFace.Back),
+		P("右臂背面", 23, 15, 4, 23, McBodyPart.RightArm, McFace.Back),
 		P("左臂背面", 41, 15, 4, 23, McBodyPart.LeftArm, McFace.Back)
 	};
 
@@ -111,7 +114,8 @@ public static class ScSkinAtlas
 	{
 		P("细手左臂正面", 0, 15, 4, 23, McBodyPart.LeftArm, McFace.Front),
 		P("细手右臂正面", 18, 15, 4, 23, McBodyPart.RightArm, McFace.Front),
-		P("细手手臂中央长条", 21, 15, 5, 49, McBodyPart.RightArm, McFace.Back),
+		P("细手手臂中央长条", 21, 39, 5, 25, McBodyPart.RightArm, McFace.Back),
+		P("细手右臂背面", 23, 15, 4, 23, McBodyPart.RightArm, McFace.Back),
 		P("细手左臂背面", 41, 15, 4, 23, McBodyPart.LeftArm, McFace.Back)
 	};
 

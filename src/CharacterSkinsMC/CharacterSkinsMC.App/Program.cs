@@ -255,6 +255,51 @@ internal static class Program
 				throw new InvalidOperationException("宽手与细手的转译规则表必须分开维护，手臂条目应有区分。");
 			}
 
+			// 转译落点必须盖住人物模型采样的全部 UV 像素，否则模型会采到透明区域，
+			// 游戏里渲染成黑块（例如曾经漏掉的右臂背面竖条）。
+			foreach (ScPlayerClass playerClass in new[] { ScPlayerClass.Male, ScPlayerClass.Female })
+			{
+				ScModel model = ScDefaultSkins.LoadModel(playerClass);
+				var coveredPixels = new HashSet<(int X, int Y)>();
+				foreach (ScRegion region in ScSkinAtlas.GetRegions(McArmModel.Classic))
+				{
+					for (int y = 0; y < region.Dest.H; y++)
+					{
+						for (int x = 0; x < region.Dest.W; x++)
+						{
+							coveredPixels.Add((region.Dest.X + x, region.Dest.Y + y));
+						}
+					}
+				}
+				foreach (ScTriangle triangle in model.Triangles)
+				{
+					(double X, double Y) a = (triangle.UvA.U * 64.0, (1.0 - triangle.UvA.V) * 64.0);
+					(double X, double Y) b = (triangle.UvB.U * 64.0, (1.0 - triangle.UvB.V) * 64.0);
+					(double X, double Y) c = (triangle.UvC.U * 64.0, (1.0 - triangle.UvC.V) * 64.0);
+					int minX = Math.Max(0, (int)Math.Floor(Math.Min(a.X, Math.Min(b.X, c.X))));
+					int maxX = Math.Min(63, (int)Math.Ceiling(Math.Max(a.X, Math.Max(b.X, c.X))));
+					int minY = Math.Max(0, (int)Math.Floor(Math.Min(a.Y, Math.Min(b.Y, c.Y))));
+					int maxY = Math.Min(63, (int)Math.Ceiling(Math.Max(a.Y, Math.Max(b.Y, c.Y))));
+					for (int y = minY; y <= maxY; y++)
+					{
+						for (int x = minX; x <= maxX; x++)
+						{
+							double px = x + 0.5;
+							double py = y + 0.5;
+							double d1 = (b.X - a.X) * (py - a.Y) - (b.Y - a.Y) * (px - a.X);
+							double d2 = (c.X - b.X) * (py - b.Y) - (c.Y - b.Y) * (px - b.X);
+							double d3 = (a.X - c.X) * (py - c.Y) - (a.Y - c.Y) * (px - c.X);
+							bool inside = (d1 >= 0 && d2 >= 0 && d3 >= 0) || (d1 <= 0 && d2 <= 0 && d3 <= 0);
+							if (inside && !coveredPixels.Contains((x, y)))
+							{
+								throw new InvalidOperationException(
+									$"{playerClass} 模型 UV ({x},{y}) 没有任何转译规则覆盖，游戏里会渲染成黑块。");
+							}
+						}
+					}
+				}
+			}
+
 			// 对称脸回归检查：源脸左右镜像对称时，头正面必须仍然左右对称，
 			// 两只眼睛（源列 2 与 5）在图集左右半各占相同列数，不能被拉成一大一小。
 			var symmetricSource = new RgbaImage(64, 64);
