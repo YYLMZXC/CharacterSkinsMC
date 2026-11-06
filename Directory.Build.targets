@@ -1,0 +1,8 @@
+<Project>
+	<!-- 桌面 RID（如 win-x64）会经 NuGet 还原图谱泄漏进 android TFM，触发 XA0035；
+	     构建 android 目标前把 RuntimeIdentifiers 复位为纯 android 集合。 -->
+	<PropertyGroup Condition="'$(TargetFramework)' != '' And $(TargetFramework.Contains('-android'))">
+		<RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
+		<RuntimeIdentifier></RuntimeIdentifier>
+	</PropertyGroup>
+</Project>

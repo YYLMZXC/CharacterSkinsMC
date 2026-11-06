@@ -1,38 +1,34 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.Linq;
 
 namespace CharacterSkinsMC.Core;
 
-/// <summary>三种预览：Minecraft 原图、转换后的 SC 图集、Minecraft 皮肤 3D 立方体预览。</summary>
+/// <summary>
+/// 三种预览：Minecraft 原图、转换后的 SC 图集、Minecraft 皮肤 3D 立方体预览。
+/// 原实现依赖 System.Drawing（Android 不可用），现改为纯托管软件光栅化，统一输出 RgbaImage。
+/// </summary>
 public static class SkinPreview
 {
-	public static Bitmap RenderMcSkin(MinecraftSkin skin, int scale, bool guides)
+	public static RgbaImage RenderMcSkin(MinecraftSkin skin, int scale, bool guides)
 	{
 		ArgumentNullException.ThrowIfNull(skin);
 		int size = MinecraftSkin.Size * Math.Max(1, scale);
-		var result = new Bitmap(size, size, PixelFormat.Format32bppArgb);
-		using (Graphics graphics = Graphics.FromImage(result))
+		var result = new RgbaImage(size, size);
+		DrawCheckerboard(result, size, Math.Max(4, scale * 8));
+		BlitNearest(result, skin.Base, new Rect(0, 0, size, size));
+		DrawGrid(result, size, scale);
+		if (guides)
 		{
-			DrawCheckerboard(graphics, size, Math.Max(4, scale * 8));
-			using var source = skin.Base.ToBitmap();
-			DrawNearest(graphics, source, new Rectangle(0, 0, size, size));
-			DrawGrid(graphics, size, scale);
-			if (guides)
+			foreach (McBodyPart part in Enum.GetValues<McBodyPart>())
 			{
-				foreach (McBodyPart part in Enum.GetValues<McBodyPart>())
+				foreach (McFace face in Enum.GetValues<McFace>())
 				{
-					foreach (McFace face in Enum.GetValues<McFace>())
+					DrawRegionOutline(result, skin.GetFaceRect(part, face), scale, new RgbaColor(60, 200, 255, 150));
+					if (skin.HasOverlay)
 					{
-						DrawRegion(graphics, skin.GetFaceRect(part, face), scale, Color.FromArgb(150, 60, 200, 255));
-						if (skin.HasOverlay)
-						{
-							DrawRegion(graphics, skin.GetFaceRect(part, face, overlay: true), scale, Color.FromArgb(150, 255, 180, 60));
-						}
+						DrawRegionOutline(result, skin.GetFaceRect(part, face, overlay: true), scale, new RgbaColor(255, 180, 60, 150));
 					}
 				}
 			}
@@ -40,71 +36,59 @@ public static class SkinPreview
 		return result;
 	}
 
-	public static Bitmap RenderAtlas(RgbaImage atlas, int scale, bool guides)
+	public static RgbaImage RenderAtlas(RgbaImage atlas, int scale, bool guides)
 	{
 		ArgumentNullException.ThrowIfNull(atlas);
 		int size = ScSkinAtlas.Size * Math.Max(1, scale);
-		var result = new Bitmap(size, size, PixelFormat.Format32bppArgb);
-		using (Graphics graphics = Graphics.FromImage(result))
+		var result = new RgbaImage(size, size);
+		DrawCheckerboard(result, size, Math.Max(4, scale * 8));
+		BlitNearest(result, atlas, new Rect(0, 0, size, size));
+		DrawGrid(result, size, scale);
+		if (guides)
 		{
-			DrawCheckerboard(graphics, size, Math.Max(4, scale * 8));
-			using var source = atlas.ToBitmap();
-			DrawNearest(graphics, source, new Rectangle(0, 0, size, size));
-			DrawGrid(graphics, size, scale);
-			if (guides)
+			foreach (ScRegion region in ScSkinAtlas.Regions)
 			{
-				foreach (ScRegion region in ScSkinAtlas.Regions)
-				{
-					DrawRegion(graphics, region.Dest, scale, Color.FromArgb(130, 120, 255, 140));
-				}
+				DrawRegionOutline(result, region.Dest, scale, new RgbaColor(120, 255, 140, 130));
 			}
 		}
 		return result;
 	}
 
 	/// <summary>用正交投影把 Minecraft 皮肤六个盒面贴到立方体上，支持旋转与双层外壳预览。</summary>
-	public static Bitmap Render3D(MinecraftSkin skin, bool composeOverlay, int width, int height, double yawDegrees, double pitchDegrees)
+	public static RgbaImage Render3D(MinecraftSkin skin, bool composeOverlay, int width, int height, double yawDegrees, double pitchDegrees)
 	{
 		ArgumentNullException.ThrowIfNull(skin);
 		width = Math.Max(160, width);
 		height = Math.Max(200, height);
-		var result = new Bitmap(width, height, PixelFormat.Format32bppArgb);
-		using (Graphics graphics = Graphics.FromImage(result))
+		var result = new RgbaImage(width, height);
+		FillRect(result, new Rect(0, 0, width, height), new RgbaColor(28, 32, 40, 255));
+
+		double scale = Math.Min(width / 22.0, height / 40.0);
+		double centerX = width / 2.0;
+		double centerY = height / 2.0 + 3.0 * scale;
+		FillEllipseBlend(result, centerX, centerY + 10.5 * scale, 7 * scale, 1.5 * scale, new RgbaColor(0, 0, 0, 60));
+
+		double yaw = yawDegrees * Math.PI / 180.0;
+		double pitch = pitchDegrees * Math.PI / 180.0;
+		double cosYaw = Math.Cos(yaw), sinYaw = Math.Sin(yaw);
+		double cosPitch = Math.Cos(pitch), sinPitch = Math.Sin(pitch);
+
+		Cube[] cubes = BuildCubes(skin.ArmModel);
+		DrawPass(result, skin.Base, cubes, 1.0, cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY, skin);
+		if (composeOverlay && skin.HasOverlay)
 		{
-			graphics.Clear(Color.FromArgb(255, 28, 32, 40));
-			graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
-			graphics.PixelOffsetMode = PixelOffsetMode.Half;
-			graphics.SmoothingMode = SmoothingMode.None;
-			graphics.CompositingMode = CompositingMode.SourceOver;
-
-			double scale = Math.Min(width / 22.0, height / 40.0);
-			double centerX = width / 2.0;
-			double centerY = height / 2.0 + 3.0 * scale;
-			using var shadow = new SolidBrush(Color.FromArgb(60, 0, 0, 0));
-			graphics.FillEllipse(shadow, (float)(centerX - 7 * scale), (float)(centerY + 9 * scale), (float)(14 * scale), (float)(3 * scale));
-
-			double yaw = yawDegrees * Math.PI / 180.0;
-			double pitch = pitchDegrees * Math.PI / 180.0;
-			double cosYaw = Math.Cos(yaw), sinYaw = Math.Sin(yaw);
-			double cosPitch = Math.Cos(pitch), sinPitch = Math.Sin(pitch);
-
-			Cube[] cubes = BuildCubes(skin.ArmModel);
-			using var baseBitmap = skin.Base.ToBitmap();
-			DrawPass(graphics, baseBitmap, cubes, 1.0, cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY, skin);
-			if (composeOverlay && skin.HasOverlay)
-			{
-				using var overlayBitmap = skin.OverlayLayer.ToBitmap();
-				DrawPass(graphics, overlayBitmap, cubes, 1.06, cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY, skin);
-			}
+			DrawPass(result, skin.OverlayLayer, cubes, 1.06, cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY, skin);
 		}
 		return result;
 	}
+
+	private readonly record struct V2(double X, double Y);
 
 	private readonly record struct V3(double X, double Y, double Z);
 
 	private sealed record Cube(double X, double Y, double Z, double W, double H, double D, McBodyPart Part);
 
-	private sealed record FaceDraw(PointF P00, PointF P10, PointF P01, Rectangle Source, double Depth, float Brightness);
+	private sealed record FaceDraw(V2[] Points, Rect Source, double Depth, double Brightness);
 
 	private static Cube[] BuildCubes(McArmModel armModel)
 	{
@@ -120,7 +104,7 @@ public static class SkinPreview
 		};
 	}
 
-	private static void DrawPass(Graphics graphics, Bitmap texture, Cube[] cubes, double factor,
+	private static void DrawPass(RgbaImage target, RgbaImage texture, Cube[] cubes, double factor,
 		double cosYaw, double sinYaw, double cosPitch, double sinPitch, double scale, double centerX, double centerY,
 		MinecraftSkin skin)
 	{
@@ -131,30 +115,83 @@ public static class SkinPreview
 			{
 				Rect rect = skin.GetFaceRect(cube.Part, face);
 				V3[] corners = GetCorners(cube, face, factor);
-				PointF p00 = Project(corners[0], cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY);
-				PointF p10 = Project(corners[1], cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY);
-				PointF p01 = Project(corners[2], cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY);
+				var points = corners.Select(c => Project(c, cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY)).ToArray();
 				double depth = corners.Average(c => DepthOf(c, cosYaw, sinYaw, cosPitch, sinPitch));
-				faces.Add(new FaceDraw(p00, p10, p01, new Rectangle(rect.X, rect.Y, rect.W, rect.H), depth, Brightness(face)));
+				faces.Add(new FaceDraw(points, rect, depth, Brightness(face)));
 			}
 		}
 		// 正交相机位于 +Z，depth 越小越远，先画远面。
-		faces.Sort((a, b) => a.Depth.CompareTo(b.Depth));
-		foreach (FaceDraw face in faces)
+		foreach (FaceDraw face in faces.OrderBy(f => f.Depth))
 		{
-			using var attributes = new ImageAttributes();
-			float brightness = face.Brightness;
-			var matrix = new ColorMatrix(new float[][]
-			{
-				new float[] { brightness, 0, 0, 0, 0 },
-				new float[] { 0, brightness, 0, 0, 0 },
-				new float[] { 0, 0, brightness, 0, 0 },
-				new float[] { 0, 0, 0, 1, 0 },
-				new float[] { 0, 0, 0, 0, 1 }
-			});
-			attributes.SetColorMatrix(matrix);
-			graphics.DrawImage(texture, new[] { face.P00, face.P10, face.P01 }, face.Source, GraphicsUnit.Pixel, attributes);
+			DrawTexturedQuad(target, texture, face.Points, face.Source, face.Brightness);
 		}
+	}
+
+	/// <summary>四角对应源矩形的左上、右上、左下、右下，拆成两个三角形做仿射贴图。</summary>
+	private static void DrawTexturedQuad(RgbaImage target, RgbaImage texture, V2[] points, Rect source, double brightness)
+	{
+		V2 p0 = points[0], p1 = points[1], p2 = points[2], p3 = points[3];
+		double u0 = source.X, v0 = source.Y;
+		double u1 = source.X + source.W, v1 = source.Y + source.H;
+		FillTexturedTriangle(target, texture, p0, new V2(u0, v0), p1, new V2(u1, v0), p2, new V2(u0, v1), brightness);
+		FillTexturedTriangle(target, texture, p1, new V2(u1, v0), p3, new V2(u1, v1), p2, new V2(u0, v1), brightness);
+	}
+
+	private static void FillTexturedTriangle(RgbaImage target, RgbaImage texture,
+		V2 a, V2 uvA, V2 b, V2 uvB, V2 c, V2 uvC, double brightness)
+	{
+		double area = (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
+		if (Math.Abs(area) < 1e-9)
+		{
+			return;
+		}
+		int minX = Math.Max(0, (int)Math.Floor(Math.Min(a.X, Math.Min(b.X, c.X))));
+		int maxX = Math.Min(target.Width - 1, (int)Math.Ceiling(Math.Max(a.X, Math.Max(b.X, c.X))));
+		int minY = Math.Max(0, (int)Math.Floor(Math.Min(a.Y, Math.Min(b.Y, c.Y))));
+		int maxY = Math.Min(target.Height - 1, (int)Math.Ceiling(Math.Max(a.Y, Math.Max(b.Y, c.Y))));
+		if (minX > maxX || minY > maxY)
+		{
+			return;
+		}
+		for (int y = minY; y <= maxY; y++)
+		{
+			for (int x = minX; x <= maxX; x++)
+			{
+				double px = x + 0.5, py = y + 0.5;
+				double weightA = EdgeFunction(b, c, px, py) / area;
+				double weightB = EdgeFunction(c, a, px, py) / area;
+				double weightC = EdgeFunction(a, b, px, py) / area;
+				if (weightA < -1e-9 || weightB < -1e-9 || weightC < -1e-9)
+				{
+					continue;
+				}
+				double u = weightA * uvA.X + weightB * uvB.X + weightC * uvC.X;
+				double v = weightA * uvA.Y + weightB * uvB.Y + weightC * uvC.Y;
+				int sourceX = Math.Clamp((int)u, 0, texture.Width - 1);
+				int sourceY = Math.Clamp((int)v, 0, texture.Height - 1);
+				RgbaColor texel = Multiply(texture.GetPixel(sourceX, sourceY), brightness);
+				RgbaColor background = target.GetPixel(x, y);
+				target.SetPixel(x, y, RgbaColor.Blend(background, texel));
+			}
+		}
+	}
+
+	private static double EdgeFunction(V2 start, V2 end, double px, double py)
+	{
+		return (end.X - start.X) * (py - start.Y) - (end.Y - start.Y) * (px - start.X);
+	}
+
+	private static RgbaColor Multiply(RgbaColor color, double factor)
+	{
+		if (factor >= 0.999)
+		{
+			return color;
+		}
+		return new RgbaColor(
+			(byte)Math.Clamp(color.R * factor, 0, 255),
+			(byte)Math.Clamp(color.G * factor, 0, 255),
+			(byte)Math.Clamp(color.B * factor, 0, 255),
+			color.A);
 	}
 
 	private static V3[] GetCorners(Cube cube, McFace face, double factor)
@@ -199,13 +236,13 @@ public static class SkinPreview
 		};
 	}
 
-	private static PointF Project(V3 point, double cosYaw, double sinYaw, double cosPitch, double sinPitch,
+	private static V2 Project(V3 point, double cosYaw, double sinYaw, double cosPitch, double sinPitch,
 		double scale, double centerX, double centerY)
 	{
 		double x1 = point.X * cosYaw + point.Z * sinYaw;
 		double z1 = -point.X * sinYaw + point.Z * cosYaw;
 		double y1 = point.Y * cosPitch - z1 * sinPitch;
-		return new PointF((float)(centerX + x1 * scale), (float)(centerY - y1 * scale));
+		return new V2(centerX + x1 * scale, centerY - y1 * scale);
 	}
 
 	private static double DepthOf(V3 point, double cosYaw, double sinYaw, double cosPitch, double sinPitch)
@@ -214,51 +251,125 @@ public static class SkinPreview
 		return point.Y * sinPitch + z1 * cosPitch;
 	}
 
-	private static float Brightness(McFace face) => face switch
+	private static double Brightness(McFace face) => face switch
 	{
-		McFace.Top => 1.0f,
-		McFace.Front => 0.92f,
-		McFace.Right => 0.86f,
-		McFace.Left => 0.82f,
-		McFace.Back => 0.76f,
-		McFace.Bottom => 0.70f,
-		_ => 1.0f
+		McFace.Top => 1.0,
+		McFace.Front => 0.92,
+		McFace.Right => 0.86,
+		McFace.Left => 0.82,
+		McFace.Back => 0.76,
+		McFace.Bottom => 0.70,
+		_ => 1.0
 	};
 
-	private static void DrawCheckerboard(Graphics graphics, int size, int tile)
+	private static void FillRect(RgbaImage image, Rect rect, RgbaColor color)
 	{
-		using var light = new SolidBrush(Color.FromArgb(255, 205, 208, 214));
-		using var dark = new SolidBrush(Color.FromArgb(255, 170, 174, 182));
-		for (int y = 0; y < size; y += tile)
+		for (int y = Math.Max(0, rect.Y); y < Math.Min(image.Height, rect.Y + rect.H); y++)
 		{
-			for (int x = 0; x < size; x += tile)
+			for (int x = Math.Max(0, rect.X); x < Math.Min(image.Width, rect.X + rect.W); x++)
 			{
-				graphics.FillRectangle(((x / tile + y / tile) & 1) == 0 ? light : dark, x, y, tile, tile);
+				image.SetPixel(x, y, color);
 			}
 		}
 	}
 
-	private static void DrawNearest(Graphics graphics, Bitmap source, Rectangle destination)
+	private static void FillEllipseBlend(RgbaImage image, double centerX, double centerY, double radiusX, double radiusY, RgbaColor color)
 	{
-		graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
-		graphics.PixelOffsetMode = PixelOffsetMode.Half;
-		graphics.DrawImage(source, destination, new Rectangle(0, 0, source.Width, source.Height), GraphicsUnit.Pixel);
-	}
-
-	private static void DrawGrid(Graphics graphics, int size, int scale)
-	{
-		int step = 8 * Math.Max(1, scale);
-		using var pen = new Pen(Color.FromArgb(70, 40, 44, 52));
-		for (int position = 0; position <= size; position += step)
+		int minX = Math.Max(0, (int)Math.Floor(centerX - radiusX));
+		int maxX = Math.Min(image.Width - 1, (int)Math.Ceiling(centerX + radiusX));
+		int minY = Math.Max(0, (int)Math.Floor(centerY - radiusY));
+		int maxY = Math.Min(image.Height - 1, (int)Math.Ceiling(centerY + radiusY));
+		if (radiusX <= 0 || radiusY <= 0)
 		{
-			graphics.DrawLine(pen, position, 0, position, size);
-			graphics.DrawLine(pen, 0, position, size, position);
+			return;
+		}
+		for (int y = minY; y <= maxY; y++)
+		{
+			for (int x = minX; x <= maxX; x++)
+			{
+				double dx = (x + 0.5 - centerX) / radiusX;
+				double dy = (y + 0.5 - centerY) / radiusY;
+				if (dx * dx + dy * dy <= 1.0)
+				{
+					image.SetPixel(x, y, RgbaColor.Blend(image.GetPixel(x, y), color));
+				}
+			}
 		}
 	}
 
-	private static void DrawRegion(Graphics graphics, Rect rect, int scale, Color color)
+	private static void HLineBlend(RgbaImage image, int x0, int x1, int y, RgbaColor color)
 	{
-		using var pen = new Pen(color);
-		graphics.DrawRectangle(pen, rect.X * scale, rect.Y * scale, rect.W * scale, rect.H * scale);
+		if (y < 0 || y >= image.Height)
+		{
+			return;
+		}
+		for (int x = Math.Max(0, x0); x <= Math.Min(image.Width - 1, x1); x++)
+		{
+			image.SetPixel(x, y, RgbaColor.Blend(image.GetPixel(x, y), color));
+		}
+	}
+
+	private static void VLineBlend(RgbaImage image, int x, int y0, int y1, RgbaColor color)
+	{
+		if (x < 0 || x >= image.Width)
+		{
+			return;
+		}
+		for (int y = Math.Max(0, y0); y <= Math.Min(image.Height - 1, y1); y++)
+		{
+			image.SetPixel(x, y, RgbaColor.Blend(image.GetPixel(x, y), color));
+		}
+	}
+
+	private static void DrawRectBlend(RgbaImage image, Rect rect, RgbaColor color)
+	{
+		HLineBlend(image, rect.X, rect.X + rect.W - 1, rect.Y, color);
+		HLineBlend(image, rect.X, rect.X + rect.W - 1, rect.Y + rect.H - 1, color);
+		VLineBlend(image, rect.X, rect.Y, rect.Y + rect.H - 1, color);
+		VLineBlend(image, rect.X + rect.W - 1, rect.Y, rect.Y + rect.H - 1, color);
+	}
+
+	private static void DrawCheckerboard(RgbaImage image, int size, int tile)
+	{
+		var light = new RgbaColor(205, 208, 214, 255);
+		var dark = new RgbaColor(170, 174, 182, 255);
+		for (int y = 0; y < size; y += tile)
+		{
+			for (int x = 0; x < size; x += tile)
+			{
+				FillRect(image, new Rect(x, y, Math.Min(tile, size - x), Math.Min(tile, size - y)), ((x / tile + y / tile) & 1) == 0 ? light : dark);
+			}
+		}
+	}
+
+	private static void BlitNearest(RgbaImage target, RgbaImage source, Rect destination)
+	{
+		for (int dy = 0; dy < destination.H; dy++)
+		{
+			int sy = Math.Min(source.Height - 1, dy * source.Height / destination.H);
+			for (int dx = 0; dx < destination.W; dx++)
+			{
+				int sx = Math.Min(source.Width - 1, dx * source.Width / destination.W);
+				RgbaColor texel = source.GetPixel(sx, sy);
+				RgbaColor background = target.GetPixel(destination.X + dx, destination.Y + dy);
+				target.SetPixel(destination.X + dx, destination.Y + dy, RgbaColor.Blend(background, texel));
+			}
+		}
+	}
+
+	private static void DrawGrid(RgbaImage image, int size, int scale)
+	{
+		int step = 8 * Math.Max(1, scale);
+		var color = new RgbaColor(40, 44, 52, 70);
+		for (int position = 0; position <= size; position += step)
+		{
+			VLineBlend(image, position, 0, size, color);
+			HLineBlend(image, 0, size, position, color);
+		}
+	}
+
+	private static void DrawRegionOutline(RgbaImage image, Rect rect, int scale, RgbaColor color)
+	{
+		DrawRectBlend(image, new Rect(rect.X * scale, rect.Y * scale, rect.W * scale, rect.H * scale), color);
 	}
 }

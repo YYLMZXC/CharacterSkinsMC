@@ -1,9 +1,8 @@
 #nullable enable
 using System;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
-using System.Runtime.InteropServices;
+using StbImageSharp;
+using StbImageWriteSharp;
 
 namespace CharacterSkinsMC.Core;
 
@@ -61,77 +60,29 @@ public sealed class RgbaImage
 		{
 			throw new FileNotFoundException("找不到皮肤文件。", path);
 		}
-		using var bitmap = new Bitmap(path);
-		return FromBitmap(bitmap);
+		return FromMemory(File.ReadAllBytes(path));
 	}
 
-	public static RgbaImage FromBitmap(Bitmap source)
+	/// <summary>解码任意常见格式（PNG/JPEG 等）的图像字节。System.Drawing 在 Android 上不可用，改用纯托管 stb 编解码。</summary>
+	public static RgbaImage FromMemory(byte[] bytes)
 	{
-		using var clone = source.Clone(new Rectangle(0, 0, source.Width, source.Height), PixelFormat.Format32bppArgb);
-		BitmapData data = clone.LockBits(new Rectangle(0, 0, clone.Width, clone.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-		try
-		{
-			byte[] buffer = new byte[data.Stride * clone.Height];
-			Marshal.Copy(data.Scan0, buffer, 0, buffer.Length);
-			var image = new RgbaImage(clone.Width, clone.Height);
-			for (int y = 0; y < clone.Height; y++)
-			{
-				for (int x = 0; x < clone.Width; x++)
-				{
-					int index = y * data.Stride + x * 4;
-					// GDI+ 的 Format32bppArgb 内存顺序为 BGRA，此处统一转成 RGBA。
-					image.SetPixel(x, y, new RgbaColor(buffer[index + 2], buffer[index + 1], buffer[index], buffer[index + 3]));
-				}
-			}
-			return image;
-		}
-		finally
-		{
-			clone.UnlockBits(data);
-		}
-	}
-
-	public Bitmap ToBitmap()
-	{
-		var bitmap = new Bitmap(Width, Height, PixelFormat.Format32bppArgb);
-		BitmapData data = bitmap.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
-		try
-		{
-			byte[] buffer = new byte[data.Stride * Height];
-			for (int y = 0; y < Height; y++)
-			{
-				for (int x = 0; x < Width; x++)
-				{
-					RgbaColor color = GetPixel(x, y);
-					int index = y * data.Stride + x * 4;
-					buffer[index] = color.B;
-					buffer[index + 1] = color.G;
-					buffer[index + 2] = color.R;
-					buffer[index + 3] = color.A;
-				}
-			}
-			Marshal.Copy(buffer, 0, data.Scan0, buffer.Length);
-		}
-		finally
-		{
-			bitmap.UnlockBits(data);
-		}
-		return bitmap;
+		ArgumentNullException.ThrowIfNull(bytes);
+		ImageResult result = ImageResult.FromMemory(bytes, StbImageSharp.ColorComponents.RedGreenBlueAlpha);
+		var image = new RgbaImage(result.Width, result.Height);
+		Buffer.BlockCopy(result.Data, 0, image.m_pixels, 0, image.m_pixels.Length);
+		return image;
 	}
 
 	public void SavePng(string path)
 	{
-		using var bitmap = ToBitmap();
-		bitmap.Save(path, ImageFormat.Png);
+		File.WriteAllBytes(path, ToPngBytes());
 	}
 
 	public byte[] ToPngBytes()
 	{
+		var writer = new ImageWriter();
 		using var stream = new MemoryStream();
-		using (var bitmap = ToBitmap())
-		{
-			bitmap.Save(stream, ImageFormat.Png);
-		}
+		writer.WritePng(m_pixels, Width, Height, StbImageWriteSharp.ColorComponents.RedGreenBlueAlpha, stream);
 		return stream.ToArray();
 	}
 }

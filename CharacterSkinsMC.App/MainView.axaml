@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="CharacterSkinsMC.App.MainView">
+	<Grid RowDefinitions="Auto,*,Auto">
+		<StackPanel Orientation="Horizontal" Margin="6,4" Spacing="6">
+			<Button Content="打开皮肤" Click="OnOpenFilesClick" />
+			<Button Content="保存当前 .scskin" Click="OnSaveCurrentClick" />
+			<Button Content="批量转换" Click="OnBatchConvertClick" />
+			<Button Content="刷新输入目录" Click="OnRescanClick" />
+			<Button x:Name="OpenInputButton" Content="打开输入目录" Click="OnOpenInputDirectoryClick" />
+			<Button Content="选择输出目录" Click="OnChooseOutputClick" />
+		</StackPanel>
+		<Grid Grid.Row="1" ColumnDefinitions="320,*">
+			<Grid RowDefinitions="Auto,*,Auto">
+				<TextBlock Margin="6,4" TextWrapping="Wrap" Foreground="#FF505864"
+				           Text="输入目录：CharacterSkinsMC（自动创建）&#x0a;也可把 PNG 直接拖入下方列表" />
+				<ListBox x:Name="FilesList" Grid.Row="1" Margin="6,0" SelectionChanged="OnFileSelected" />
+				<StackPanel Grid.Row="2" Margin="6,4">
+					<TextBlock Text="转换选项" FontWeight="Bold" Margin="0,0,0,4" />
+					<CheckBox x:Name="SlimCheck" Content="Slim 手臂（3px）" />
+					<CheckBox x:Name="OverlayCheck" Content="合成第二层（帽子/外套）" IsChecked="True" />
+					<CheckBox x:Name="GuidesCheck" Content="显示 UV 分区" IsChecked="True" />
+					<CheckBox x:Name="AutoRotateCheck" Content="自动旋转 3D 预览" />
+					<StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="6">
+						<TextBlock Text="视角" VerticalAlignment="Center" />
+						<Slider x:Name="YawSlider" Minimum="0" Maximum="360" Value="35" Width="190"
+						        VerticalAlignment="Center" />
+					</StackPanel>
+				</StackPanel>
+			</Grid>
+			<TabControl Grid.Column="1" Margin="4,0,0,0">
+				<TabItem Header="MC 皮肤">
+					<ScrollViewer Background="White">
+						<Image x:Name="McPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+					</ScrollViewer>
+				</TabItem>
+				<TabItem Header="SC 图集">
+					<ScrollViewer Background="White">
+						<Image x:Name="ScPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+					</ScrollViewer>
+				</TabItem>
+				<TabItem Header="3D 预览">
+					<ScrollViewer>
+						<Image x:Name="ModelPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+					</ScrollViewer>
+				</TabItem>
+			</TabControl>
+		</Grid>
+		<TextBlock x:Name="StatusBar" Grid.Row="2" Margin="8,4" TextWrapping="Wrap" />
+	</Grid>
+</UserControl>

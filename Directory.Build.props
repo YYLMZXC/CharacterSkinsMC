@@ -9,6 +9,11 @@
 		<!-- 与主仓根 Directory.Build.props 的 GlobalTargetFramework 同口径；改基版本时两处同步。 -->
 		<GlobalTargetFramework>net11.0</GlobalTargetFramework>
 		<WindowsTargetFramework>$(GlobalTargetFramework)-windows</WindowsTargetFramework>
+		<!-- Avalonia 双目标：桌面 + Android 单项目模式。 -->
+		<AndroidTargetFramework>$(GlobalTargetFramework)-android</AndroidTargetFramework>
 		<ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
 	</PropertyGroup>
+	<!-- RID 复位须在还原阶段生效（桌面 win-x64 经 NuGet dgspec 泄漏进移动 TFM 会触发 XA0035），
+	     故在 props 末段显式导入本仓 targets，切断主仓的同时保住复位逻辑。 -->
+	<Import Project="$(MSBuildThisFileDirectory)Directory.Build.targets" />
 </Project>

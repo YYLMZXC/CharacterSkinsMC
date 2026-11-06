@@ -1,15 +1,17 @@
 #nullable enable
 using System;
 using System.IO;
-using System.Windows.Forms;
+using Avalonia;
 using CharacterSkinsMC.Core;
+using Rect = CharacterSkinsMC.Core.Rect;
 
 namespace CharacterSkinsMC.App;
 
+// 桌面入口；csproj 已把本文件从 android TFM 编译列表移除，Android 入口在 Platforms/Android/MainApplication。
 internal static class Program
 {
 	[STAThread]
-	private static void Main(string[] args)
+	public static void Main(string[] args)
 	{
 		if (args.Length == 1 && args[0] == "--smoke")
 		{
@@ -21,10 +23,14 @@ internal static class Program
 			DumpPreviews(args[1]);
 			return;
 		}
-		Application.SetHighDpiMode(HighDpiMode.SystemAware);
-		Application.EnableVisualStyles();
-		Application.SetCompatibleTextRenderingDefault(false);
-		Application.Run(new MainForm());
+		BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+	}
+
+	public static AppBuilder BuildAvaloniaApp()
+	{
+		return AppBuilder.Configure<App>()
+			.UsePlatformDetect()
+			.LogToTrace();
 	}
 
 	/// <summary>导出一份样例皮肤与三种预览图，用于人工核对 UV 与 3D 投影效果。</summary>
@@ -36,12 +42,12 @@ internal static class Program
 		MinecraftSkin skin = MinecraftSkin.Load(skinPath, McArmModel.Classic);
 		RgbaImage atlas = MinecraftSkinConverter.Convert(skin, composeOverlay: true);
 		MinecraftSkinConverter.SaveScSkin(atlas, Path.Combine(directory, "sample-skin.scskin"));
-		using var mcPreview = SkinPreview.RenderMcSkin(skin, 8, guides: true);
-		using var scPreview = SkinPreview.RenderAtlas(atlas, 8, guides: true);
-		using var modelPreview = SkinPreview.Render3D(skin, composeOverlay: true, 480, 560, 35, 18);
-		mcPreview.Save(Path.Combine(directory, "preview-mc.png"), System.Drawing.Imaging.ImageFormat.Png);
-		scPreview.Save(Path.Combine(directory, "preview-sc.png"), System.Drawing.Imaging.ImageFormat.Png);
-		modelPreview.Save(Path.Combine(directory, "preview-3d.png"), System.Drawing.Imaging.ImageFormat.Png);
+		var mcPreview = SkinPreview.RenderMcSkin(skin, 8, guides: true);
+		var scPreview = SkinPreview.RenderAtlas(atlas, 8, guides: true);
+		var modelPreview = SkinPreview.Render3D(skin, composeOverlay: true, 480, 560, 35, 18);
+		mcPreview.SavePng(Path.Combine(directory, "preview-mc.png"));
+		scPreview.SavePng(Path.Combine(directory, "preview-sc.png"));
+		modelPreview.SavePng(Path.Combine(directory, "preview-3d.png"));
 		Console.WriteLine($"预览已导出到：{directory}");
 	}
 
@@ -155,9 +161,9 @@ internal static class Program
 				}
 			}
 
-			using var mcPreview = SkinPreview.RenderMcSkin(skin, 4, guides: true);
-			using var scPreview = SkinPreview.RenderAtlas(atlas, 4, guides: true);
-			using var modelPreview = SkinPreview.Render3D(skin, composeOverlay: true, 300, 400, 35, 18);
+			var mcPreview = SkinPreview.RenderMcSkin(skin, 4, guides: true);
+			var scPreview = SkinPreview.RenderAtlas(atlas, 4, guides: true);
+			var modelPreview = SkinPreview.Render3D(skin, composeOverlay: true, 300, 400, 35, 18);
 
 			if (atlas.Width != 64 || atlas.Height != 64 || reloaded.Width != 64 || reloaded.Height != 64 || opaquePixels == 0)
 			{

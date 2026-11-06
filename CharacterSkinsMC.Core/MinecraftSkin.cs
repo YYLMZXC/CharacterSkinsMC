@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using System.Drawing;
 using System.IO;
 
 namespace CharacterSkinsMC.Core;
@@ -67,8 +66,7 @@ public sealed class MinecraftSkin
 		{
 			throw new FileNotFoundException("找不到皮肤文件。", path);
 		}
-		using var bitmap = new Bitmap(path);
-		RgbaImage source = RgbaImage.FromBitmap(bitmap);
+		RgbaImage source = RgbaImage.FromFile(path);
 		int width = source.Width;
 		int height = source.Height;
 
