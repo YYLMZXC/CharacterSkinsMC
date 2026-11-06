@@ -32,6 +32,10 @@ public partial class MainView : UserControl
 	private bool m_uiReady;
 	private readonly Dictionary<ScPlayerClass, ScModel> m_models = new();
 	private readonly DispatcherTimer m_timer;
+	private readonly Stopwatch m_rotationClock = Stopwatch.StartNew();
+
+	private const double MinRotationSpeed = 5.0;
+	private const double MaxRotationSpeed = 180.0;
 
 	private ScPlayerClass CurrentPlayerClass =>
 		PlayerClassCombo.SelectedIndex == 1 ? ScPlayerClass.Female : ScPlayerClass.Male;
@@ -63,6 +67,13 @@ public partial class MainView : UserControl
 		FilesList.AddHandler(DragDrop.DragOverEvent, OnListDragOver);
 		FilesList.AddHandler(DragDrop.DropEvent, OnListDrop);
 		YawSlider.ValueChanged += (_, e) => OnYawSliderChanged(e.NewValue);
+		SpeedSlider.ValueChanged += (_, e) =>
+		{
+			if (m_uiReady)
+			{
+				UpdateSpeedLabel(e.NewValue);
+			}
+		};
 		SlimCheck.PropertyChanged += (_, e) =>
 		{
 			if (e.Property == CheckBox.IsCheckedProperty)
@@ -88,6 +99,7 @@ public partial class MainView : UserControl
 		PlayerClassCombo.SelectionChanged += OnPlayerClassChanged;
 		// 所有 XAML 命名控件都已填充，才允许事件处理器访问列表与预览控件。
 		m_uiReady = true;
+		UpdateSpeedLabel(SpeedSlider.Value);
 		PlayerClassCombo.SelectedIndex = 0;
 		InitializeComparison();
 		Rescan();
@@ -135,11 +147,16 @@ public partial class MainView : UserControl
 
 	private void OnTimerTick(object? sender, EventArgs e)
 	{
+		// 按两次回调之间的真实时长推进，界面繁忙时旋转速度不随帧率变化；
+		// 卡顿或系统休眠造成的超长间隔不补帧，避免恢复时视角突跳。
+		double elapsedSeconds = Math.Clamp(m_rotationClock.Elapsed.TotalSeconds, 0.0, 0.5);
+		m_rotationClock.Restart();
 		if (AutoRotateCheck.IsChecked != true || (m_skin == null && m_selectedDefaultAtlas == null))
 		{
 			return;
 		}
-		m_yawDegrees = (m_yawDegrees + 2.5) % 360.0;
+		double degreesPerSecond = Math.Clamp(SpeedSlider.Value, MinRotationSpeed, MaxRotationSpeed);
+		m_yawDegrees = (m_yawDegrees + degreesPerSecond * elapsedSeconds) % 360.0;
 		m_suppressYawEvent = true;
 		YawSlider.Value = m_yawDegrees;
 		m_suppressYawEvent = false;
@@ -148,6 +165,12 @@ public partial class MainView : UserControl
 			RenderModel();
 		}
 		RenderScModel();
+	}
+
+	/// <summary>速度滑块以「度/秒」显示，范围与 MinRotationSpeed / MaxRotationSpeed 一致。</summary>
+	private void UpdateSpeedLabel(double degreesPerSecond)
+	{
+		SpeedValue.Text = $"{degreesPerSecond:F0} 度/秒";
 	}
 
 	private void OnYawSliderChanged(double value)

@@ -7,7 +7,7 @@ Minecraft 皮肤 → Survivalcraft（生存战争）皮肤转换工具。
 - 读取 64×64 Minecraft 皮肤（Classic / Slim 3px 手臂，自动识别或手动切换）
 - 支持合成第二层（帽子 / 外套）到图集
 - 转换为 Survivalcraft `.scskin` 图集，输出到指定目录即可被游戏读取
-- 预览：MC 皮肤平面图（MC 分区）、SC 图集（SC 男/女分区参考线）、MC 3D 立方体预览、SC 专属 3D 预览（真实 HumanMale/HumanFemale.dae 模型，可自动旋转）
+- 预览：MC 皮肤平面图（MC 分区）、SC 图集（SC 男/女分区参考线）、MC 3D 立方体预览、SC 专属 3D 预览（真实 HumanMale/HumanFemale.dae 模型，自动旋转速度可调 5–180 度/秒，默认 30）
 - SC 图集对比：转译结果 / 任意内置默认皮肤 / 差异高亮三栏并列，显示差异像素数与相似度（灰=一致，红=不同）
 - 内置 Survivalcraft 全部 8 张默认人物皮肤（男 4 / 女 4）：按性别切换、查看图集、在 SC 3D 预览中试穿、导出 `.scskin`
 - 批量转换输入目录中的全部 PNG 皮肤
