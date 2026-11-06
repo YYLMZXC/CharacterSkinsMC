@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<!-- 桌面 + Android 双目标：Android 走 .NET Android 单项目模式，入口在 Platforms/Android。 -->
 		<TargetFrameworks>$(GlobalTargetFramework);$(AndroidTargetFramework)</TargetFrameworks>
@@ -17,6 +17,8 @@
 		<SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
 		<ApplicationId>com.sc.characterskinsmc</ApplicationId>
 		<ApplicationTitle>CharacterSkinsMC</ApplicationTitle>
+		<!-- Android 设置页展示的版本名取构建时间版本号（Directory.Build.props 生成的 yy.MM.dd-HHmm）。 -->
+		<AndroidVersionName>$(Version)</AndroidVersionName>
 		<AndroidManifest>Platforms/Android/AndroidManifest.xml</AndroidManifest>
 	</PropertyGroup>
 	<ItemGroup>

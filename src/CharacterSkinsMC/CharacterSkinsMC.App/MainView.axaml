@@ -9,7 +9,8 @@
 			<Button Content="刷新输入目录" Click="OnRescanClick" />
 			<Button x:Name="OpenInputButton" Content="打开输入目录" Click="OnOpenInputDirectoryClick" />
 			<Button Content="选择输出目录" Click="OnChooseOutputClick" />
-		</StackPanel>
+			<Button Content="关于" Click="OnAboutClick" />
+			</StackPanel>
 		<Grid Grid.Row="1" ColumnDefinitions="320,*">
 			<Grid RowDefinitions="Auto,*,Auto">
 				<TextBlock Margin="6,4" TextWrapping="Wrap" Foreground="#FF505864"

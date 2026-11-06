@@ -13,6 +13,18 @@
 		<AndroidTargetFramework>$(GlobalTargetFramework)-android</AndroidTargetFramework>
 		<ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
 	</PropertyGroup>
+	<PropertyGroup>
+		<!-- 版本号按构建时间自动生成：yy.MM.dd-HHmm（如 26.11.06-1421），每次构建刷新；
+		     仅写 Version/InformationalVersion 供「关于」弹窗读取；
+		     FileVersion 用数值型 yy.MM.dd.HHmm，AssemblyVersion 固定 1.0.0.0（数值限制）；
+		     关闭 SDK 往 InformationalVersion 追加 Git 提交哈希的行为。 -->
+		<BuildTimeVersion>$([System.DateTime]::Now.ToString('yy.MM.dd-HHmm'))</BuildTimeVersion>
+		<Version>$(BuildTimeVersion)</Version>
+		<InformationalVersion>$(BuildTimeVersion)</InformationalVersion>
+		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+		<FileVersion>$([System.DateTime]::Now.ToString('yy.MM.dd.HHmm'))</FileVersion>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+	</PropertyGroup>
 	<!-- RID 复位须在还原阶段生效（桌面 win-x64 经 NuGet dgspec 泄漏进移动 TFM 会触发 XA0035），
 	     故在 props 末段显式导入本仓 targets，切断主仓的同时保住复位逻辑。 -->
 	<Import Project="$(MSBuildThisFileDirectory)Directory.Build.targets" />

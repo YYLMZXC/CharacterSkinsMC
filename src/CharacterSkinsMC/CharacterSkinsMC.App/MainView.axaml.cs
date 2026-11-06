@@ -380,5 +380,15 @@ public partial class MainView : UserControl
 		}
 	}
 
+	private void OnAboutClick(object? sender, RoutedEventArgs e)
+	{
+		if (OperatingSystem.IsAndroid() || OperatingSystem.IsIOS())
+		{
+			SetStatus($"CharacterSkinsMC {AboutWindow.GetVersion()} —— Minecraft 皮肤 → Survivalcraft 皮肤转换工具");
+			return;
+		}
+		new AboutWindow(TopLevel.GetTopLevel(this) as Window).Show();
+	}
+
 	private void SetStatus(string text) => StatusBar.Text = text;
 }
