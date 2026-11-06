@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Diagnostics;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -17,7 +18,10 @@ public partial class AboutWindow : Window
 	public AboutWindow(Window? owner)
 	{
 		InitializeComponent();
-		VersionText.Text = $"版本 {GetVersion()}（按构建时间自动生成）";
+		string version = GetVersion();
+		VersionText.Text = $"版本 {version}（按构建时间自动生成）";
+		// 标题显示大版本号（日期部分），如「关于 CharacterSkinsMC 26.11.06」。
+		Title = $"关于 CharacterSkinsMC {GetMajorVersion(version)}";
 		if (owner != null)
 		{
 			// Avalonia 12 中 Owner 的 set 访问器是 protected，只能在子类构造器里赋值。
@@ -31,6 +35,22 @@ public partial class AboutWindow : Window
 		Assembly assembly = typeof(AboutWindow).Assembly;
 		string? version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
 		return string.IsNullOrWhiteSpace(version) ? "dev" : version!;
+	}
+
+	/// <summary>大版本号：取版本号「-」前的日期段，如 26.11.06。</summary>
+	public static string GetMajorVersion(string version) => version.Split('-')[0];
+
+	private void OnOpenProjectUrlClick(object? sender, RoutedEventArgs e)
+	{
+		try
+		{
+			var psi = new ProcessStartInfo(ProjectUrlText.Text ?? string.Empty) { UseShellExecute = true };
+			Process.Start(psi);
+		}
+		catch (Exception ex)
+		{
+			Trace.WriteLine($"[CharacterSkinsMC] 打开项目主页失败 地址={ProjectUrlText.Text} 消息={ex.Message}");
+		}
 	}
 
 	private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
