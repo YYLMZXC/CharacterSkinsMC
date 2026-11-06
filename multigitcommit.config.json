@@ -1,9 +1,9 @@
 {
   "RemoteUrls": [
-    "D:\\sc\\cnb\\sc\\ScNetworkDEV\\tools\\CharacterSkinsMC"
+    "https://cnb.cool/SurvivalcraftTool/CharacterSkinsMC"
   ],
   "CheckAddAll": true,
   "CheckPushTags": false,
-  "CheckForceCommit": true,
-  "CheckForcePush": true
+  "CheckForceCommit": false,
+  "CheckForcePush": false
 }
