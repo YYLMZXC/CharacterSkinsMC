@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v11.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v11.0": {
+      "CharacterSkinsMC/1.0.0": {
+        "dependencies": {
+          "CharacterSkinsMC.Core": "1.0.0"
+        },
+        "runtime": {
+          "CharacterSkinsMC.dll": {}
+        }
+      },
+      "CharacterSkinsMC.Core/1.0.0": {
+        "runtime": {
+          "CharacterSkinsMC.Core.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "CharacterSkinsMC/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "CharacterSkinsMC.Core/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
