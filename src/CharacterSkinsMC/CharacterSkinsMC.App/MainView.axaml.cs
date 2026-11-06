@@ -9,6 +9,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using CheckBox = Avalonia.Controls.CheckBox;
+using ScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media.Imaging;
@@ -130,6 +131,7 @@ public partial class MainView : UserControl
 		};
 		this.AttachedToVisualTree += (_, _) => ApplyResponsiveLayout(Bounds.Width);
 		PlayerClassCombo.SelectionChanged += OnPlayerClassChanged;
+		AboutVersionText.Text = $"版本 {AboutWindow.GetVersion()}（按构建时间自动生成）";
 		// 所有 XAML 命名控件都已填充，才允许事件处理器访问列表与预览控件。
 		m_uiReady = true;
 		UpdateSpeedLabel(SpeedSlider.Value);
@@ -173,9 +175,10 @@ public partial class MainView : UserControl
 		{
 			BodyGrid.ColumnDefinitions[0].Width = new GridLength(0);
 			BodyGrid.ColumnDefinitions[1].Width = GridLength.Star;
-			// 侧栏按自身内容取高度（文件列表有 MinHeight 保底），剩余空间全部留给标签页。
+			// 侧栏与标签页都改为按内容取高，整页交给外层滚动容器，矮视口下可滑到全部内容。
 			BodyGrid.RowDefinitions[0].Height = GridLength.Auto;
-			BodyGrid.RowDefinitions[1].Height = GridLength.Star;
+			BodyGrid.RowDefinitions[1].Height = GridLength.Auto;
+			BodyScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
 			Grid.SetColumnSpan(SidePanel, 2);
 			Grid.SetRow(SidePanel, 0);
 			Grid.SetColumn(SidePanel, 0);
@@ -197,6 +200,8 @@ public partial class MainView : UserControl
 			Grid.SetRow(MainTabs, 0);
 			Grid.SetColumn(MainTabs, 1);
 			MainTabs.Margin = new Thickness(4, 0, 0, 0);
+			// 宽屏时禁用整页滚动，保持左右两栏各自内部的滚动行为。
+			BodyScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
 		}
 	}
 
@@ -770,14 +775,39 @@ public partial class MainView : UserControl
 		}
 	}
 
+	/// <summary>「关于」统一以右侧抽屉打开：桌面与 Android 同一交互，Android 上不再弹独立窗口。</summary>
 	private void OnAboutClick(object? sender, RoutedEventArgs e)
 	{
-		if (OperatingSystem.IsAndroid() || OperatingSystem.IsIOS())
+		AboutDrawer.IsPaneOpen = true;
+	}
+
+	private void OnCloseAboutClick(object? sender, RoutedEventArgs e)
+	{
+		AboutDrawer.IsPaneOpen = false;
+	}
+
+	/// <summary>项目地址本身就是链接，点击后经 TopLevel 启动器打开（桌面走系统默认浏览器，Android 走浏览器 Intent）。</summary>
+	private async void OnProjectUrlPressed(object? sender, PointerPressedEventArgs e)
+	{
+		string? url = ProjectUrlText.Text;
+		if (string.IsNullOrWhiteSpace(url))
 		{
-			SetStatus($"CharacterSkinsMC {AboutWindow.GetVersion()} —— Minecraft 皮肤 → Survivalcraft 皮肤转换工具");
 			return;
 		}
-		new AboutWindow(TopLevel.GetTopLevel(this) as Window).Show();
+		try
+		{
+			TopLevel? topLevel = TopLevel.GetTopLevel(this);
+			bool opened = topLevel != null && await topLevel.Launcher.LaunchUriAsync(new Uri(url));
+			if (!opened)
+			{
+				SetStatus($"无法在浏览器打开项目地址：{url}");
+			}
+		}
+		catch (Exception ex)
+		{
+			Trace.WriteLine($"[CharacterSkinsMC] 打开项目主页失败 地址={url} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
+			SetStatus($"打开项目地址失败：{ex.Message}");
+		}
 	}
 
 	private void SetStatus(string text) => StatusBar.Text = text;

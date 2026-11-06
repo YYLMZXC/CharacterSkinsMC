@@ -20,12 +20,12 @@
 		<!-- Android 设置页展示的版本名取构建时间版本号（Directory.Build.props 生成的 yy.MM.dd-HHmm）。 -->
 		<AndroidVersionName>$(Version)</AndroidVersionName>
 		<AndroidManifest>Platforms/Android/AndroidManifest.xml</AndroidManifest>
-		<!-- 发布配置：versionCode 按构建时间递增（yyMMddHH，10 位数值），未显式传入时可覆盖。 -->
+		<!-- 发布配置：versionCode 按构建时间递增（yyMMddHH，10 位数值），可在命令行 -p: 覆盖。 -->
 		<ApplicationVersion Condition="'$(ApplicationVersion)' == ''">$([System.DateTime]::Now.ToString('yyMMddHH'))</ApplicationVersion>
-		<!-- dotnet publish 默认 Release 产出 .aab；固定为可直接安装的 .apk。 -->
+		<!-- dotnet publish 默认 Release 产出 .aab；固定为可直接安装的 .apk。
+		     RID 集合由 Directory.Build.targets 复位为 android-arm64;android-x64，
+		     publish 产出包含双 ABI 的通用 APK（-Signed 后缀为已用 debug 密钥签名的成品）。 -->
 		<AndroidPackageFormat Condition="'$(AndroidPackageFormat)' == ''">apk</AndroidPackageFormat>
-		<!-- 按 ABI 分包：arm64（真机）与 x64（模拟器）各出一个 APK。 -->
-		<AndroidCreatePackagePerAbi Condition="'$(AndroidCreatePackagePerAbi)' == ''">true</AndroidCreatePackagePerAbi>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Avalonia" Version="12.1.5" />

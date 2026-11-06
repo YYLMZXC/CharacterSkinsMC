@@ -12,11 +12,10 @@ $androidTfm = "net11.0-android"
 
 Write-Host "== 发布 Android 版本 配置=$Configuration 目标框架=$androidTfm =="
 
-# 多目标工程 publish 必须显式 -f；apk/分包格式由 csproj 默认值提供，可被 -p: 覆盖。
+# 多目标工程 publish 必须显式 -f；apk 格式由 csproj 默认值提供，可被 -p: 覆盖。
 # 未提供正式 keystore 时自动用 debug 密钥签名，仅限侧载自用。
 dotnet publish $project -f $androidTfm -c $Configuration --nologo `
-	-p:AndroidPackageFormat=apk `
-	-p:AndroidCreatePackagePerAbi=true
+	-p:AndroidPackageFormat=apk
 
 if ($LASTEXITCODE -ne 0) {
 	Write-Error "publish 失败，退出码 $LASTEXITCODE"

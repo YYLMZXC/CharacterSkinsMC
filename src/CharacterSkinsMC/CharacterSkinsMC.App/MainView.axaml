@@ -1,152 +1,184 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="CharacterSkinsMC.App.MainView">
-	<Grid RowDefinitions="Auto,*,Auto">
-		<!-- 窄屏时按钮自动换行，避免工具栏右侧按钮被裁掉。 -->
-		<WrapPanel Margin="6,4">
-			<WrapPanel.Styles>
-				<Style Selector="Button">
-					<Setter Property="Margin" Value="0,0,6,4" />
-				</Style>
-			</WrapPanel.Styles>
-			<Button Content="打开皮肤" Click="OnOpenFilesClick" />
-			<Button Content="保存当前 .scskin" Click="OnSaveCurrentClick" />
-			<Button Content="批量转换" Click="OnBatchConvertClick" />
-			<Button Content="刷新输入目录" Click="OnRescanClick" />
-			<Button x:Name="OpenInputButton" Content="打开输入目录" Click="OnOpenInputDirectoryClick" />
-			<Button Content="选择输出目录" Click="OnChooseOutputClick" />
-			<Button Content="关于" Click="OnAboutClick" />
-		</WrapPanel>
-		<!-- 宽屏保持左右两栏；窄屏由 ApplyResponsiveLayout 切成上下两行。 -->
-		<Grid x:Name="BodyGrid" Grid.Row="1" ColumnDefinitions="320,*" RowDefinitions="*,Auto">
-			<Grid x:Name="SidePanel" Grid.Row="0" Grid.Column="0" RowDefinitions="Auto,*,Auto">
-				<TextBlock Margin="6,4" TextWrapping="Wrap" Foreground="#FF505864"
-				           Text="列表顶部为 2 张内置皮肤，无需文件即可转换；输入目录：CharacterSkinsMC（自动创建），也可把 PNG 直接拖入下方列表" />
-				<ListBox x:Name="FilesList" Grid.Row="1" Margin="6,0" MinHeight="140" SelectionChanged="OnFileSelected" />
-				<StackPanel Grid.Row="2" Margin="6,4">
-					<TextBlock Text="转换选项" FontWeight="Bold" Margin="0,0,0,4" />
-					<CheckBox x:Name="SlimCheck" Content="Slim 手臂（3px）" />
-					<CheckBox x:Name="OverlayCheck" Content="合成第二层（帽子/外套）" IsChecked="True" />
-					<CheckBox x:Name="GuidesCheck" Content="显示 UV 分区" IsChecked="True" />
-					<CheckBox x:Name="AutoRotateCheck" Content="自动旋转 3D 预览" />
-					<StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="6">
-						<TextBlock Text="SC 模型性别" VerticalAlignment="Center" />
-						<!-- 选中项与事件都在 InitializeComponent 完成后由代码设置，避免 XAML EndInit 阶段事件早触发。 -->
-						<ComboBox x:Name="PlayerClassCombo" Width="120">
-							<ComboBoxItem Content="男" />
-							<ComboBoxItem Content="女" />
-						</ComboBox>
+	<!-- 「关于」以右侧抽屉打开：桌面与 Android 统一交互，点抽屉外自动收起。 -->
+	<SplitView x:Name="AboutDrawer" DisplayMode="Overlay" PanePlacement="Right"
+	           OpenPaneLength="360" IsPaneOpen="False">
+		<SplitView.Pane>
+			<Grid RowDefinitions="Auto,*,Auto" Margin="14,14,14,14">
+				<Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+					<TextBlock Text="CharacterSkinsMC" FontSize="22" FontWeight="Bold" />
+					<Button Grid.Column="1" Content="关闭" Click="OnCloseAboutClick" />
+				</Grid>
+				<ScrollViewer Grid.Row="1" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto">
+					<StackPanel Spacing="8">
+						<TextBlock x:Name="AboutVersionText" FontSize="14" Foreground="#FF505864" TextWrapping="Wrap" />
+						<TextBlock TextWrapping="Wrap" Margin="0,8,0,0"
+						           Text="Minecraft 皮肤 → Survivalcraft（生存战争）皮肤转换工具。&#x0a;&#x0a;· 读取 64×64 Minecraft 皮肤（Classic / Slim 手臂，含第二层）&#x0a;· 转换为 Survivalcraft .scskin 图集，可直接放入游戏输入目录&#x0a;· 提供单张预览（MC 皮肤 / SC 图集 / 3D 模型）与批量转换" />
+						<TextBlock TextWrapping="Wrap" Foreground="#FF9098A4"
+						           Text="版本号按构建时间自动生成，格式为 年.月.日-时分（如 26.11.06-1421）。" />
 					</StackPanel>
-					<StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="6">
-						<TextBlock Text="视角" VerticalAlignment="Center" />
-						<Slider x:Name="YawSlider" Minimum="0" Maximum="360" Value="35" Width="190"
-						        VerticalAlignment="Center" />
-					</StackPanel>
-					<StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="6">
-						<TextBlock Text="旋转速度" VerticalAlignment="Center" />
-						<Slider x:Name="SpeedSlider" Minimum="5" Maximum="180" Value="30" Width="140"
-						        VerticalAlignment="Center" />
-						<TextBlock x:Name="SpeedValue" Text="30 度/秒" Width="70" VerticalAlignment="Center"
-						           Foreground="#FF505864" />
-					</StackPanel>
+				</ScrollViewer>
+				<StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+					<TextBlock Text="项目地址：" VerticalAlignment="Center" />
+					<TextBlock x:Name="ProjectUrlText" Text="https://cnb.cool/SurvivalcraftTool/CharacterSkinsMC"
+					           VerticalAlignment="Center" Foreground="#FF2060A0" TextDecorations="Underline"
+					           Cursor="Hand" PointerPressed="OnProjectUrlPressed"
+					           ToolTip.Tip="点击在浏览器中打开" />
 				</StackPanel>
 			</Grid>
-			<TabControl x:Name="MainTabs" Grid.Row="0" Grid.Column="1" Margin="4,0,0,0">
-				<TabItem Header="MC 皮肤">
-					<DockPanel>
-						<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
-						           Text="Minecraft 原版 64×64 双层皮肤布局：蓝框为基础层、橙框为第二层，取自 MC 分区表。" />
-						<ScrollViewer Background="White" HorizontalScrollBarVisibility="Disabled"
-						              VerticalScrollBarVisibility="Auto">
-							<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
-							         HorizontalAlignment="Left" VerticalAlignment="Top">
-								<Image x:Name="McPreviewImage" Stretch="None" Margin="8" />
-							</Viewbox>
-						</ScrollViewer>
-					</DockPanel>
-				</TabItem>
-				<TabItem Header="SC 图集">
-					<DockPanel>
-						<TextBlock DockPanel.Dock="Top" Margin="6,4" TextWrapping="Wrap" Foreground="#FF505864"
-						           Text="Survivalcraft 原版 64×64 图集分区：绿框按左侧性别套用男/女两套 SC UV 表，与 MC 分区、转译落点均无关。" />
-						<StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,4" Spacing="8">
-							<CheckBox x:Name="CompareCheck" Content="与默认皮肤对比" IsChecked="True" />
-							<TextBlock Text="对照皮肤" VerticalAlignment="Center" />
-							<ComboBox x:Name="CompareSkinCombo" Width="190" />
+		</SplitView.Pane>
+		<Grid RowDefinitions="Auto,*,Auto">
+			<!-- 窄屏时按钮自动换行，避免工具栏右侧按钮被裁掉。 -->
+			<WrapPanel Margin="6,4">
+				<WrapPanel.Styles>
+					<Style Selector="Button">
+						<Setter Property="Margin" Value="0,0,6,4" />
+					</Style>
+				</WrapPanel.Styles>
+				<Button Content="打开皮肤" Click="OnOpenFilesClick" />
+				<Button Content="保存当前 .scskin" Click="OnSaveCurrentClick" />
+				<Button Content="批量转换" Click="OnBatchConvertClick" />
+				<Button Content="刷新输入目录" Click="OnRescanClick" />
+				<Button x:Name="OpenInputButton" Content="打开输入目录" Click="OnOpenInputDirectoryClick" />
+				<Button Content="选择输出目录" Click="OnChooseOutputClick" />
+				<Button Content="关于" Click="OnAboutClick" />
+			</WrapPanel>
+			<!-- 宽屏保持左右两栏；窄屏由 ApplyResponsiveLayout 切成上下两行并允许整页滚动，
+			     避免手机等矮视口下底部内容被挤出去且无法滑到。 -->
+			<ScrollViewer x:Name="BodyScroll" Grid.Row="1" Background="Transparent"
+			              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
+				<Grid x:Name="BodyGrid" ColumnDefinitions="320,*" RowDefinitions="*,Auto">
+					<Grid x:Name="SidePanel" Grid.Row="0" Grid.Column="0" RowDefinitions="Auto,*,Auto">
+						<TextBlock Margin="6,4" TextWrapping="Wrap" Foreground="#FF505864"
+						           Text="列表顶部为 2 张内置皮肤，无需文件即可转换；输入目录：CharacterSkinsMC（自动创建），也可把 PNG 直接拖入下方列表" />
+						<ListBox x:Name="FilesList" Grid.Row="1" Margin="6,0" MinHeight="140" SelectionChanged="OnFileSelected" />
+						<StackPanel Grid.Row="2" Margin="6,4">
+							<TextBlock Text="转换选项" FontWeight="Bold" Margin="0,0,0,4" />
+							<CheckBox x:Name="SlimCheck" Content="Slim 手臂（3px）" />
+							<CheckBox x:Name="OverlayCheck" Content="合成第二层（帽子/外套）" IsChecked="True" />
+							<CheckBox x:Name="GuidesCheck" Content="显示 UV 分区" IsChecked="True" />
+							<CheckBox x:Name="AutoRotateCheck" Content="自动旋转 3D 预览" />
+							<StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="6">
+								<TextBlock Text="SC 模型性别" VerticalAlignment="Center" />
+								<!-- 选中项与事件都在 InitializeComponent 完成后由代码设置，避免 XAML EndInit 阶段事件早触发。 -->
+								<ComboBox x:Name="PlayerClassCombo" Width="120">
+									<ComboBoxItem Content="男" />
+									<ComboBoxItem Content="女" />
+								</ComboBox>
+							</StackPanel>
+							<StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="6">
+								<TextBlock Text="视角" VerticalAlignment="Center" />
+								<Slider x:Name="YawSlider" Minimum="0" Maximum="360" Value="35" Width="190"
+								        VerticalAlignment="Center" />
+							</StackPanel>
+							<StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="6">
+								<TextBlock Text="旋转速度" VerticalAlignment="Center" />
+								<Slider x:Name="SpeedSlider" Minimum="5" Maximum="180" Value="30" Width="140"
+								        VerticalAlignment="Center" />
+								<TextBlock x:Name="SpeedValue" Text="30 度/秒" Width="70" VerticalAlignment="Center"
+								           Foreground="#FF505864" />
+							</StackPanel>
 						</StackPanel>
-						<TextBlock DockPanel.Dock="Top" x:Name="CompareStats" Margin="6,0,6,4" TextWrapping="Wrap"
-						           Foreground="#FF505864" />
-						<Grid>
-							<ScrollViewer x:Name="SingleAtlasView" Background="White"
-							              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-								<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
-								         HorizontalAlignment="Left" VerticalAlignment="Top">
-									<Image x:Name="ScPreviewImage" Stretch="None" Margin="8" />
-								</Viewbox>
-							</ScrollViewer>
-							<ScrollViewer x:Name="CompareAtlasView" Background="White" IsVisible="False"
-							              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-								<Grid Margin="8" ColumnDefinitions="*,*,*" VerticalAlignment="Top">
-									<StackPanel Grid.Column="0" Margin="0,0,8,0" Spacing="4">
-										<TextBlock Text="转译结果" FontWeight="Bold" TextWrapping="Wrap" />
-										<Image x:Name="CompareCurrentImage" Stretch="Uniform" VerticalAlignment="Top" />
-									</StackPanel>
-									<StackPanel Grid.Column="1" Margin="0,0,8,0" Spacing="4">
-										<TextBlock Text="内置默认皮肤" FontWeight="Bold" TextWrapping="Wrap" />
-										<Image x:Name="CompareReferenceImage" Stretch="Uniform" VerticalAlignment="Top" />
-									</StackPanel>
-									<StackPanel Grid.Column="2" Spacing="4">
-										<TextBlock Text="差异（灰=一致，红=不同）" FontWeight="Bold" TextWrapping="Wrap" />
-										<Image x:Name="CompareDiffImage" Stretch="Uniform" VerticalAlignment="Top" />
-									</StackPanel>
-								</Grid>
-							</ScrollViewer>
-						</Grid>
-					</DockPanel>
-				</TabItem>
-				<TabItem Header="MC 3D 预览">
-					<DockPanel>
-						<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
-						           Text="Minecraft 立方体人物模型，含第二层外壳；只用于查看输入皮肤，与右侧 SC 3D 预览相互独立。" />
-						<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-							<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
-							         HorizontalAlignment="Left" VerticalAlignment="Top">
-								<Image x:Name="ModelPreviewImage" Stretch="None" Margin="8" />
-							</Viewbox>
-						</ScrollViewer>
-					</DockPanel>
-				</TabItem>
-				<TabItem Header="SC 3D 预览">
-					<DockPanel>
-						<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
-						           Text="Survivalcraft 专属预览：使用真实 HumanMale / HumanFemale.dae 三角形与皮肤图集 UV 渲染，按左侧性别切换模型。" />
-						<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-							<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
-							         HorizontalAlignment="Left" VerticalAlignment="Top">
-								<Image x:Name="ScModelPreviewImage" Stretch="None" Margin="8" />
-							</Viewbox>
-						</ScrollViewer>
-					</DockPanel>
-				</TabItem>
-				<TabItem Header="SC 默认皮肤">
-					<Grid RowDefinitions="Auto,*" ColumnDefinitions="240,*">
-						<TextBlock Grid.Row="0" Grid.ColumnSpan="2" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
-						           Text="内置 8 张 Survivalcraft 默认人物皮肤（男 4 张 / 女 4 张）；按左侧「SC 模型性别」切换，绿框按该皮肤性别套用对应 SC UV 表，选中后可在 SC 3D 预览中查看。" />
-						<StackPanel Grid.Row="1" Grid.Column="0" Margin="6,0" Spacing="4">
-							<ListBox x:Name="DefaultSkinList" SelectionChanged="OnDefaultSkinSelected" />
-							<Button Content="导出选中皮肤 .scskin" Click="OnExportDefaultSkinClick" />
-						</StackPanel>
-						<ScrollViewer Grid.Row="1" Grid.Column="1" Background="White"
-						              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-							<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
-							         HorizontalAlignment="Left" VerticalAlignment="Top">
-								<Image x:Name="DefaultSkinPreviewImage" Stretch="None" Margin="8" />
-							</Viewbox>
-						</ScrollViewer>
 					</Grid>
-				</TabItem>
-			</TabControl>
+					<TabControl x:Name="MainTabs" Grid.Row="0" Grid.Column="1" Margin="4,0,0,0">
+						<TabItem Header="MC 皮肤">
+							<DockPanel>
+								<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
+								           Text="Minecraft 原版 64×64 双层皮肤布局：蓝框为基础层、橙框为第二层，取自 MC 分区表。" />
+								<ScrollViewer Background="White" HorizontalScrollBarVisibility="Disabled"
+								              VerticalScrollBarVisibility="Auto">
+									<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+									         HorizontalAlignment="Left" VerticalAlignment="Top">
+										<Image x:Name="McPreviewImage" Stretch="None" Margin="8" />
+									</Viewbox>
+								</ScrollViewer>
+							</DockPanel>
+						</TabItem>
+						<TabItem Header="SC 图集">
+							<DockPanel>
+								<TextBlock DockPanel.Dock="Top" Margin="6,4" TextWrapping="Wrap" Foreground="#FF505864"
+								           Text="Survivalcraft 原版 64×64 图集分区：绿框按左侧性别套用男/女两套 SC UV 表，与 MC 分区、转译落点均无关。" />
+								<StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,4" Spacing="8">
+									<CheckBox x:Name="CompareCheck" Content="与默认皮肤对比" IsChecked="True" />
+									<TextBlock Text="对照皮肤" VerticalAlignment="Center" />
+									<ComboBox x:Name="CompareSkinCombo" Width="190" />
+								</StackPanel>
+								<TextBlock DockPanel.Dock="Top" x:Name="CompareStats" Margin="6,0,6,4" TextWrapping="Wrap"
+								           Foreground="#FF505864" />
+								<Grid>
+									<ScrollViewer x:Name="SingleAtlasView" Background="White"
+									              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+										<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+										         HorizontalAlignment="Left" VerticalAlignment="Top">
+											<Image x:Name="ScPreviewImage" Stretch="None" Margin="8" />
+										</Viewbox>
+									</ScrollViewer>
+									<ScrollViewer x:Name="CompareAtlasView" Background="White" IsVisible="False"
+									              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+										<Grid Margin="8" ColumnDefinitions="*,*,*" VerticalAlignment="Top">
+											<StackPanel Grid.Column="0" Margin="0,0,8,0" Spacing="4">
+												<TextBlock Text="转译结果" FontWeight="Bold" TextWrapping="Wrap" />
+												<Image x:Name="CompareCurrentImage" Stretch="Uniform" VerticalAlignment="Top" />
+											</StackPanel>
+											<StackPanel Grid.Column="1" Margin="0,0,8,0" Spacing="4">
+												<TextBlock Text="内置默认皮肤" FontWeight="Bold" TextWrapping="Wrap" />
+												<Image x:Name="CompareReferenceImage" Stretch="Uniform" VerticalAlignment="Top" />
+											</StackPanel>
+											<StackPanel Grid.Column="2" Spacing="4">
+												<TextBlock Text="差异（灰=一致，红=不同）" FontWeight="Bold" TextWrapping="Wrap" />
+												<Image x:Name="CompareDiffImage" Stretch="Uniform" VerticalAlignment="Top" />
+											</StackPanel>
+										</Grid>
+									</ScrollViewer>
+								</Grid>
+							</DockPanel>
+						</TabItem>
+						<TabItem Header="MC 3D 预览">
+							<DockPanel>
+								<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
+								           Text="Minecraft 立方体人物模型，含第二层外壳；只用于查看输入皮肤，与右侧 SC 3D 预览相互独立。" />
+								<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+									<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+									         HorizontalAlignment="Left" VerticalAlignment="Top">
+										<Image x:Name="ModelPreviewImage" Stretch="None" Margin="8" />
+									</Viewbox>
+								</ScrollViewer>
+							</DockPanel>
+						</TabItem>
+						<TabItem Header="SC 3D 预览">
+							<DockPanel>
+								<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
+								           Text="Survivalcraft 专属预览：使用真实 HumanMale / HumanFemale.dae 三角形与皮肤图集 UV 渲染，按左侧性别切换模型。" />
+								<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+									<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+									         HorizontalAlignment="Left" VerticalAlignment="Top">
+										<Image x:Name="ScModelPreviewImage" Stretch="None" Margin="8" />
+									</Viewbox>
+								</ScrollViewer>
+							</DockPanel>
+						</TabItem>
+						<TabItem Header="SC 默认皮肤">
+							<Grid RowDefinitions="Auto,*" ColumnDefinitions="240,*">
+								<TextBlock Grid.Row="0" Grid.ColumnSpan="2" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
+								           Text="内置 8 张 Survivalcraft 默认人物皮肤（男 4 张 / 女 4 张）；按左侧「SC 模型性别」切换，绿框按该皮肤性别套用对应 SC UV 表，选中后可在 SC 3D 预览中查看。" />
+								<StackPanel Grid.Row="1" Grid.Column="0" Margin="6,0" Spacing="4">
+									<ListBox x:Name="DefaultSkinList" SelectionChanged="OnDefaultSkinSelected" />
+									<Button Content="导出选中皮肤 .scskin" Click="OnExportDefaultSkinClick" />
+								</StackPanel>
+								<ScrollViewer Grid.Row="1" Grid.Column="1" Background="White"
+								              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+									<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+									         HorizontalAlignment="Left" VerticalAlignment="Top">
+										<Image x:Name="DefaultSkinPreviewImage" Stretch="None" Margin="8" />
+									</Viewbox>
+								</ScrollViewer>
+							</Grid>
+						</TabItem>
+					</TabControl>
+				</Grid>
+			</ScrollViewer>
+			<TextBlock x:Name="StatusBar" Grid.Row="2" Margin="8,4" TextWrapping="Wrap" />
 		</Grid>
-		<TextBlock x:Name="StatusBar" Grid.Row="2" Margin="8,4" TextWrapping="Wrap" />
-	</Grid>
+	</SplitView>
 </UserControl>
