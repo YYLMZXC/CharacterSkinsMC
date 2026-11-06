@@ -255,6 +255,52 @@ internal static class Program
 				throw new InvalidOperationException("宽手与细手的转译规则表必须分开维护，手臂条目应有区分。");
 			}
 
+			// 对称脸回归检查：源脸左右镜像对称时，头正面必须仍然左右对称，
+			// 两只眼睛（源列 2 与 5）在图集左右半各占相同列数，不能被拉成一大一小。
+			var symmetricSource = new RgbaImage(64, 64);
+			var faceColor = new RgbaColor(200, 170, 130, 255);
+			var eyeColor = new RgbaColor(255, 255, 255, 255);
+			for (int y = 0; y < 8; y++)
+			{
+				for (int x = 0; x < 8; x++)
+				{
+					symmetricSource.SetPixel(8 + x, 8 + y, x == 2 || x == 5 ? eyeColor : faceColor);
+				}
+			}
+			string symmetricPath = Path.Combine(directory, "symmetric-face.png");
+			symmetricSource.SavePng(symmetricPath);
+			MinecraftSkin symmetricSkin = MinecraftSkin.Load(symmetricPath, McArmModel.Classic);
+			RgbaImage symmetricAtlas = MinecraftSkinConverter.Convert(symmetricSkin, composeOverlay: false);
+			for (int y = 3; y < 10; y++)
+			{
+				int leftEyeWidth = 0;
+				int rightEyeWidth = 0;
+				for (int x = 6; x < 16; x++)
+				{
+					RgbaColor pixel = symmetricAtlas.GetPixel(x, y);
+					if (pixel != symmetricAtlas.GetPixel(21 - x, y))
+					{
+						throw new InvalidOperationException($"头正面第 {y} 行左右不对称，眼睛会被拉成一大一小。");
+					}
+					if (pixel != eyeColor)
+					{
+						continue;
+					}
+					if (x < 11)
+					{
+						leftEyeWidth++;
+					}
+					else
+					{
+						rightEyeWidth++;
+					}
+				}
+				if (leftEyeWidth == 0 || leftEyeWidth != rightEyeWidth)
+				{
+					throw new InvalidOperationException($"头正面第 {y} 行两眼宽度不一致：左 {leftEyeWidth} / 右 {rightEyeWidth}。");
+				}
+			}
+
 			int opaquePixels = 0;
 			for (int y = 0; y < atlas.Height; y++)
 			{

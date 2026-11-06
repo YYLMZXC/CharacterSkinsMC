@@ -12,6 +12,8 @@ namespace CharacterSkinsMC.Core;
 /// <remarks>
 /// 这些矩形是「MC 像素的落点」，不是 Survivalcraft 原版 64×64 图集的 UV 分区；
 /// 预览参考线一律使用 ScUvLayouts 的男/女两套原版分区，本表只供 MinecraftSkinConverter 生成像素。
+/// SymmetricX 表示目标矩形横跨整个盒面，横向缩放必须按中线成对取整，
+/// 否则左右半脸各自放大时会把复制列落在一只眼睛上，造成两眼一大一小。
 /// </remarks>
 public sealed record ScRegion(
 	string Name,
@@ -22,7 +24,8 @@ public sealed record ScRegion(
 	double U1 = 1.0,
 	double V0 = 0.0,
 	double V1 = 1.0,
-	bool MirrorX = false);
+	bool MirrorX = false,
+	bool SymmetricX = false);
 
 /// <summary>
 /// MC 盒面 → SC 图集的转译规则集合，以及转译产物的固定尺寸。
@@ -33,14 +36,16 @@ public static class ScSkinAtlas
 	public const int Size = 64;
 
 	private static ScRegion P(string name, int x, int y, int w, int h, McBodyPart part, McFace face,
-		double u0 = 0.0, double u1 = 1.0, bool mirrorX = false)
+		double u0 = 0.0, double u1 = 1.0, bool mirrorX = false, bool symmetricX = false)
 	{
-		return new ScRegion(name, new Rect(x, y, w, h), part, face, u0, u1, 0.0, 1.0, mirrorX);
+		return new ScRegion(name, new Rect(x, y, w, h), part, face, u0, u1, 0.0, 1.0, mirrorX, symmetricX);
 	}
 
 	/// <summary>
-	/// 布局说明：人物模型把头、躯干、四肢拆成「正面左右半、背面左右半、左右侧面」共六类岛；
+	/// 布局说明：人物模型把头、躯干、四肢拆成「正面、背面、左右侧面」等岛；
 	/// 头与躯干还有顶/底带状岛，手臂在各视角里是窄长条。
+	/// 正面/背面在模型上分成左右两个 UV 岛，但贴图 U 方向连续，故按整面合并采样，
+	/// 避免两个半块各自放大时把一只眼睛拉宽。
 	/// </summary>
 	/// <summary>宽手（Steve）转译规则；旧入口保留，供预览/比较等与手臂无关的场景使用。</summary>
 	public static IReadOnlyList<ScRegion> Regions { get; } = GetRegions(McArmModel.Classic);
@@ -55,37 +60,30 @@ public static class ScSkinAtlas
 
 	private static readonly ScRegion[] s_commonRegions = new ScRegion[]
 	{
-		// 头部：正面、背面各拆左右半块，左右侧面各一整块，顶/底两条带。
-		P("头部正面左", 6, 3, 5, 7, McBodyPart.Head, McFace.Front, 0.0, 0.5),
-		P("头部正面右", 11, 3, 5, 7, McBodyPart.Head, McFace.Front, 0.5, 1.0),
-		P("头部背面左", 29, 3, 5, 7, McBodyPart.Head, McFace.Back, 0.0, 0.5),
-		P("头部背面右", 34, 3, 5, 7, McBodyPart.Head, McFace.Back, 0.5, 1.0),
+		// 头部：正面/背面各作为一整张脸连续采样（模型上虽分成左右两个 UV 岛，U 方向仍连续），
+		// 左右侧面各一整块，顶/底两条带。整面横跨中线的区块一律用 symmetricX 成对取整。
+		P("头部正面", 6, 3, 10, 7, McBodyPart.Head, McFace.Front, symmetricX: true),
+		P("头部背面", 29, 3, 10, 7, McBodyPart.Head, McFace.Back, symmetricX: true),
 		P("头部左侧", 45, 1, 8, 10, McBodyPart.Head, McFace.Left),
 		P("头部右侧", 54, 1, 8, 10, McBodyPart.Head, McFace.Right),
-		P("头部顶面", 6, 0, 10, 3, McBodyPart.Head, McFace.Top),
-		P("头部顶面背", 29, 0, 10, 3, McBodyPart.Head, McFace.Top),
-		P("头部底面", 6, 10, 10, 3, McBodyPart.Head, McFace.Bottom),
-		P("头部底面背", 29, 10, 10, 3, McBodyPart.Head, McFace.Bottom),
+		P("头部顶面", 6, 0, 10, 3, McBodyPart.Head, McFace.Top, symmetricX: true),
+		P("头部顶面背", 29, 0, 10, 3, McBodyPart.Head, McFace.Top, symmetricX: true),
+		P("头部底面", 6, 10, 10, 3, McBodyPart.Head, McFace.Bottom, symmetricX: true),
+		P("头部底面背", 29, 10, 10, 3, McBodyPart.Head, McFace.Bottom, symmetricX: true),
 
-		// 躯干：正面/背面左右半块 + 左右侧面。
-		P("躯干正面左", 4, 14, 7, 18, McBodyPart.Body, McFace.Front, 0.0, 0.5),
-		P("躯干正面右", 11, 14, 7, 18, McBodyPart.Body, McFace.Front, 0.5, 1.0),
-		P("躯干背面左", 27, 14, 7, 18, McBodyPart.Body, McFace.Back, 0.0, 0.5),
-		P("躯干背面右", 34, 14, 7, 18, McBodyPart.Body, McFace.Back, 0.5, 1.0),
+		// 躯干：正面/背面各一整块 + 左右侧面。
+		P("躯干正面", 4, 14, 14, 18, McBodyPart.Body, McFace.Front, symmetricX: true),
+		P("躯干背面", 27, 14, 14, 18, McBodyPart.Body, McFace.Back, symmetricX: true),
 		P("躯干左侧", 46, 14, 7, 18, McBodyPart.Body, McFace.Left),
 		P("躯干右侧", 54, 14, 7, 18, McBodyPart.Body, McFace.Right),
 
 		// 肩部（顶面）与腰部（底面）。
-		P("肩正面左", 4, 10, 7, 4, McBodyPart.Body, McFace.Top, 0.0, 0.5),
-		P("肩正面右", 11, 10, 7, 4, McBodyPart.Body, McFace.Top, 0.5, 1.0),
-		P("肩背面左", 27, 10, 7, 4, McBodyPart.Body, McFace.Top, 0.0, 0.5),
-		P("肩背面右", 34, 10, 7, 4, McBodyPart.Body, McFace.Top, 0.5, 1.0),
+		P("肩正面", 4, 10, 14, 4, McBodyPart.Body, McFace.Top, symmetricX: true),
+		P("肩背面", 27, 10, 14, 4, McBodyPart.Body, McFace.Top, symmetricX: true),
 		P("肩左侧", 46, 10, 7, 4, McBodyPart.Body, McFace.Top),
 		P("肩右侧", 54, 10, 7, 4, McBodyPart.Body, McFace.Top),
-		P("腰正面左", 4, 32, 7, 6, McBodyPart.Body, McFace.Bottom, 0.0, 0.5),
-		P("腰正面右", 11, 32, 7, 6, McBodyPart.Body, McFace.Bottom, 0.5, 1.0),
-		P("腰背面左", 27, 32, 7, 6, McBodyPart.Body, McFace.Bottom, 0.0, 0.5),
-		P("腰背面右", 34, 32, 7, 6, McBodyPart.Body, McFace.Bottom, 0.5, 1.0),
+		P("腰正面", 4, 32, 14, 6, McBodyPart.Body, McFace.Bottom, symmetricX: true),
+		P("腰背面", 27, 32, 14, 6, McBodyPart.Body, McFace.Bottom, symmetricX: true),
 		P("腰左侧", 46, 32, 7, 6, McBodyPart.Body, McFace.Bottom),
 		P("腰右侧", 54, 32, 7, 6, McBodyPart.Body, McFace.Bottom),
 

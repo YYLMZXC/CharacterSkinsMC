@@ -32,13 +32,29 @@ public static class MinecraftSkinConverter
 						? region.U1 - tx * (region.U1 - region.U0)
 						: region.U0 + tx * (region.U1 - region.U0);
 					double v = region.V0 + ty * (region.V1 - region.V0);
-					int sourceX = faceRect.X + Math.Clamp((int)(u * faceRect.W), 0, faceRect.W - 1);
+					int sourceX = faceRect.X + SampleColumn(region, u, dx, faceRect.W);
 					int sourceY = faceRect.Y + Math.Clamp((int)(v * faceRect.H), 0, faceRect.H - 1);
 					atlas.SetPixel(region.Dest.X + dx, region.Dest.Y + dy, source.GetPixel(sourceX, sourceY));
 				}
 			}
 		}
 		return atlas;
+	}
+
+	/// <summary>
+	/// 目标列 → 源面列。横跨整个盒面的区块（SymmetricX，如整张脸）按中线成对取整：
+	/// 左半取上边界、右半取下边界，8→10 得到 [0,1,1,2,3,4,5,6,6,7]，
+	/// 关于源列 3/4 镜像，额外列落在两侧，眼睛等细节保持原宽度。
+	/// 若两半都按常规下取整，会得到 [0,1,2,2,3,4,5,6,6,7]：
+	/// 源列 2（左眼）被复制，其镜像列 5（右眼）没有，两眼于是一大一小。
+	/// </summary>
+	private static int SampleColumn(ScRegion region, double u, int dx, int faceWidth)
+	{
+		double position = u * faceWidth;
+		double column = region.SymmetricX && dx < region.Dest.W / 2
+			? Math.Ceiling(position) - 1
+			: Math.Floor(position);
+		return Math.Clamp((int)column, 0, faceWidth - 1);
 	}
 
 	/// <summary>输出可被游戏直接导入的 .scskin 字节（PNG 内容）。</summary>
