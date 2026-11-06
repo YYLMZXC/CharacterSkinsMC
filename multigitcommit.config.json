@@ -1,7 +1,8 @@
 {
   "RemoteUrls": [
     "https://cnb.cool/SurvivalcraftTool/CharacterSkinsMC",
-    "https://gitee.com/yylmzxc/character-skins-mc"
+    "https://gitee.com/yylmzxc/character-skins-mc",
+    "https://github.com/YYLMZXC/CharacterSkinsMC"
   ],
   "CheckAddAll": true,
   "CheckPushTags": false,
