@@ -14,7 +14,7 @@ public static class MinecraftSkinConverter
 	/// 注意：目标矩形按图片自上而下的行坐标定义，已抵消 Human* 模型 UV 的 V 方向差异；
 	/// 产物是直接可被 Texture2D.Load 读取的 PNG 字节内容，扩展名用 .scskin 即可。
 	/// </summary>
-	public static RgbaImage Convert(MinecraftSkin skin, bool composeOverlay = true)
+	public static RgbaImage Convert(MinecraftSkin skin, bool composeOverlay = true, bool fillBlank = false)
 	{
 		ArgumentNullException.ThrowIfNull(skin);
 		RgbaImage source = composeOverlay ? skin.Composed : skin.Base;
@@ -37,6 +37,12 @@ public static class MinecraftSkinConverter
 					atlas.SetPixel(region.Dest.X + dx, region.Dest.Y + dy, source.GetPixel(sourceX, sourceY));
 				}
 			}
+		}
+		if (fillBlank)
+		{
+			// 鞘翅补齐：游戏按 UV 采样图集，落在已贴图区域边缘/空隙的透明像素会渲染成黑块；
+			// 转译后把空白从相邻已贴图像素扩散补齐，手臂、肩膀等部位不再出现黑色漏贴图。
+			atlas = atlas.FillBlankExtending(new RgbaColor(0, 0, 0, 255));
 		}
 		return atlas;
 	}

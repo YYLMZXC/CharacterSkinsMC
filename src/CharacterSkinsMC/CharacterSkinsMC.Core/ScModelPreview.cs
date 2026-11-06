@@ -32,8 +32,9 @@ public static class ScModelPreview
 		ArgumentNullException.ThrowIfNull(model);
 		if (fillTransparentAsBlack)
 		{
-			// 图集透明区域填成不透明黑色，避免人物表面出现镂空，观感更实。
-			atlas = atlas.FillTransparentAs(new RgbaColor(0, 0, 0, 255));
+			// 空白从相邻不透明像素扩散补齐：区域边缘的 UV 采空点拿到邻近皮肤色，
+			// 消除肩膀等部位的黑边与镂空；与内容隔离的大片空白才落为纯黑。
+			atlas = atlas.FillBlankExtending(new RgbaColor(0, 0, 0, 255));
 		}
 		width = Math.Max(160, width);
 		height = Math.Max(200, height);

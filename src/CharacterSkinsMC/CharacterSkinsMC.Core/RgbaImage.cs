@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.IO;
 using StbImageSharp;
 using StbImageWriteSharp;
@@ -54,19 +55,75 @@ public sealed class RgbaImage
 		return copy;
 	}
 
-	/// <summary>返回一张新图：alpha 低于阈值的像素替换为指定填充色（不透明），其余像素原样复制。</summary>
-	public RgbaImage FillTransparentAs(RgbaColor fill, byte alphaThreshold = 128)
+	/// <summary>
+	/// 返回一张新图：alpha 低于阈值的像素从相邻不透明像素逐圈扩散取色补齐（把最近的不透明颜色向外生长），
+	/// 用于消除 3D 预览中 UV 采样落在区域边缘/空隙上的黑边与镂空；
+	/// 扩散不到的远处孤立空白才填为 fallback 色。全图处理完后没有任何半透明像素。
+	/// </summary>
+	public RgbaImage FillBlankExtending(RgbaColor fallback, byte alphaThreshold = 255)
 	{
-		var result = new RgbaImage(Width, Height);
+		var result = Clone();
+		bool Enough(int x, int y) => result.GetPixel(x, y).A >= alphaThreshold;
+		while (true)
+		{
+			var updates = new List<(int X, int Y, RgbaColor Color)>();
+			for (int y = 0; y < Height; y++)
+			{
+				for (int x = 0; x < Width; x++)
+				{
+					if (Enough(x, y))
+					{
+						continue;
+					}
+					int r = 0, g = 0, b = 0, n = 0;
+					CollectNeighbor(result, x - 1, y, alphaThreshold, ref r, ref g, ref b, ref n);
+					CollectNeighbor(result, x + 1, y, alphaThreshold, ref r, ref g, ref b, ref n);
+					CollectNeighbor(result, x, y - 1, alphaThreshold, ref r, ref g, ref b, ref n);
+					CollectNeighbor(result, x, y + 1, alphaThreshold, ref r, ref g, ref b, ref n);
+					if (n > 0)
+					{
+						updates.Add((x, y, new RgbaColor((byte)(r / n), (byte)(g / n), (byte)(b / n), 255)));
+					}
+				}
+			}
+			if (updates.Count == 0)
+			{
+				break;
+			}
+			foreach ((int x, int y, RgbaColor color) in updates)
+			{
+				result.SetPixel(x, y, color);
+			}
+		}
+		// 扩散不到的远处空白（与任何内容都不相邻的大片区域）按 fallback 兜底。
 		for (int y = 0; y < Height; y++)
 		{
 			for (int x = 0; x < Width; x++)
 			{
-				RgbaColor pixel = GetPixel(x, y);
-				result.SetPixel(x, y, pixel.A < alphaThreshold ? fill : pixel);
+				if (!Enough(x, y))
+				{
+					result.SetPixel(x, y, fallback);
+				}
 			}
 		}
 		return result;
+	}
+
+	private void CollectNeighbor(RgbaImage image, int x, int y, byte alphaThreshold, ref int r, ref int g, ref int b, ref int n)
+	{
+		if ((uint)x >= (uint)Width || (uint)y >= (uint)Height)
+		{
+			return;
+		}
+		RgbaColor pixel = image.GetPixel(x, y);
+		if (pixel.A < alphaThreshold)
+		{
+			return;
+		}
+		r += pixel.R;
+		g += pixel.G;
+		b += pixel.B;
+		n++;
 	}
 
 	public static RgbaImage FromFile(string path)

@@ -145,6 +145,14 @@ public partial class MainView : UserControl
 				RenderScModel();
 			}
 		};
+		// SC 鞘翅补齐改变转译产物本身，须走 OpenSelected 重新转换并刷新全部预览。
+		ElytraFillCheck.PropertyChanged += (_, e) =>
+		{
+			if (e.Property == CheckBox.IsCheckedProperty && m_uiReady)
+			{
+				OpenSelected();
+			}
+		};
 		GuidesCheck.PropertyChanged += (_, e) =>
 		{
 			if (e.Property == CheckBox.IsCheckedProperty)
@@ -479,11 +487,11 @@ public partial class MainView : UserControl
 			m_skin = entry.Builtin == null
 				? MinecraftSkin.Load(entry.FilePath!, armModel)
 				: McBuiltinSkins.Load(entry.Builtin, armModel);
-			m_atlas = MinecraftSkinConverter.Convert(m_skin, OverlayCheck.IsChecked == true);
+			m_atlas = MinecraftSkinConverter.Convert(m_skin, OverlayCheck.IsChecked == true, ElytraFillCheck.IsChecked == true);
 			// 选中转换皮肤后，SC 3D 预览回到「当前转换结果」；选中内置皮肤时另由 OnDefaultSkinSelected 覆盖。
 			m_selectedDefaultAtlas = null;
 			UpdatePreviews();
-			SetStatus($"{entry.DisplayName} | {m_skin.SourceDescription} | 手臂={(m_skin.ArmModel == McArmModel.Slim ? "细手（Alex）" : "宽手（Steve）")} | 第二层={(m_skin.HasOverlay && OverlayCheck.IsChecked == true ? "已合成" : "未合成")} | 输出={m_outputDirectory}");
+			SetStatus($"{entry.DisplayName} | {m_skin.SourceDescription} | 手臂={(m_skin.ArmModel == McArmModel.Slim ? "细手（Alex）" : "宽手（Steve）")} | 第二层={(m_skin.HasOverlay && OverlayCheck.IsChecked == true ? "已合成" : "未合成")} | 鞘翅补齐={(ElytraFillCheck.IsChecked == true ? "开" : "关")} | 输出={m_outputDirectory}");
 		}
 		catch (Exception ex)
 		{
@@ -806,7 +814,7 @@ public partial class MainView : UserControl
 				MinecraftSkin skin = entry.Builtin == null
 					? MinecraftSkin.Load(entry.FilePath!, armModel)
 					: McBuiltinSkins.Load(entry.Builtin, armModel);
-				RgbaImage atlas = MinecraftSkinConverter.Convert(skin, OverlayCheck.IsChecked == true);
+				RgbaImage atlas = MinecraftSkinConverter.Convert(skin, OverlayCheck.IsChecked == true, ElytraFillCheck.IsChecked == true);
 				string output = Path.Combine(m_outputDirectory, entry.OutputName + ".scskin");
 				MinecraftSkinConverter.SaveScSkin(atlas, output);
 				success++;

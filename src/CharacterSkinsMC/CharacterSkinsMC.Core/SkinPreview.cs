@@ -77,9 +77,9 @@ public static class SkinPreview
 		double cosPitch = Math.Cos(pitch), sinPitch = Math.Sin(pitch);
 
 		Cube[] cubes = BuildCubes(skin.ArmModel);
-		// 只填充基础层：第二层外壳的透明像素本意是露出下层，填黑会破坏叠加效果。
+		// 只补齐基础层：第二层外壳的透明像素本意是露出下层，补齐会破坏叠加效果。
 		RgbaImage baseTexture = fillTransparentAsBlack
-			? skin.Base.FillTransparentAs(new RgbaColor(0, 0, 0, 255))
+			? skin.Base.FillBlankExtending(new RgbaColor(0, 0, 0, 255))
 			: skin.Base;
 		DrawPass(result, baseTexture, cubes, 1.0, cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY, skin);
 		if (composeOverlay && skin.HasOverlay)
