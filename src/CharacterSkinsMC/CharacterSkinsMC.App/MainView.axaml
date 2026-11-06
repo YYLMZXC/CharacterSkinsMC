@@ -21,7 +21,7 @@
 		<Grid x:Name="BodyGrid" Grid.Row="1" ColumnDefinitions="320,*" RowDefinitions="*,Auto">
 			<Grid x:Name="SidePanel" Grid.Row="0" Grid.Column="0" RowDefinitions="Auto,*,Auto">
 				<TextBlock Margin="6,4" TextWrapping="Wrap" Foreground="#FF505864"
-				           Text="输入目录：CharacterSkinsMC（自动创建）&#x0a;也可把 PNG 直接拖入下方列表" />
+				           Text="列表顶部为 2 张内置皮肤，无需文件即可转换；输入目录：CharacterSkinsMC（自动创建），也可把 PNG 直接拖入下方列表" />
 				<ListBox x:Name="FilesList" Grid.Row="1" Margin="6,0" MinHeight="140" SelectionChanged="OnFileSelected" />
 				<StackPanel Grid.Row="2" Margin="6,4">
 					<TextBlock Text="转换选项" FontWeight="Bold" Margin="0,0,0,4" />

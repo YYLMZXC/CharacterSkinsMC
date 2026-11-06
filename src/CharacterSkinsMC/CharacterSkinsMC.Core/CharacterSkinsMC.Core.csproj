@@ -19,5 +19,7 @@
 		<!-- 内置 8 张 Survivalcraft 默认人物皮肤与男女 DAE 模型，随程序集一起分发。 -->
 		<EmbeddedResource Include="Assets/DefaultSkins/*.png" />
 		<EmbeddedResource Include="Assets/Models/*.dae" />
+		<!-- 内置 2 张 Minecraft 示例皮肤（res 文件夹收录），无输入目录时也可直接转换。 -->
+		<EmbeddedResource Include="Assets/BuiltinSkins/*.png" />
 	</ItemGroup>
 </Project>

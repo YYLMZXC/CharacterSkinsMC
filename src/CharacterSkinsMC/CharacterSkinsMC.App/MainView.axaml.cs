@@ -40,6 +40,28 @@ public partial class MainView : UserControl
 	private const double CompactLayoutThreshold = 800.0;
 	private const double SidePanelWidth = 320.0;
 
+	/// <summary>输入列表条目：内置皮肤（无磁盘路径）或输入目录中的 PNG 文件。</summary>
+	private sealed class SkinListEntry
+	{
+		public SkinListEntry(string displayName, string? filePath, McBuiltinSkin? builtin)
+		{
+			DisplayName = displayName;
+			FilePath = filePath;
+			Builtin = builtin;
+		}
+
+		public string DisplayName { get; }
+		public string? FilePath { get; }
+		public McBuiltinSkin? Builtin { get; }
+
+		/// <summary>保存 .scskin 时的文件名（不含扩展名）。</summary>
+		public string OutputName => Builtin == null
+			? Path.GetFileNameWithoutExtension(FilePath!)
+			: Builtin.DisplayName;
+
+		public override string ToString() => DisplayName;
+	}
+
 	private ScPlayerClass CurrentPlayerClass =>
 		PlayerClassCombo.SelectedIndex == 1 ? ScPlayerClass.Female : ScPlayerClass.Male;
 
@@ -319,9 +341,14 @@ public partial class MainView : UserControl
 	private void Rescan()
 	{
 		FilesList.Items.Clear();
+		// 内置示例皮肤始终排在最前，空目录或 Android 沙盒下也能直接转换预览。
+		foreach (McBuiltinSkin builtin in McBuiltinSkins.All)
+		{
+			FilesList.Items.Add(new SkinListEntry($"内置：{builtin.DisplayName}", null, builtin));
+		}
 		foreach (string path in Directory.GetFiles(m_inputDirectory, "*.png").OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
 		{
-			FilesList.Items.Add(path);
+			FilesList.Items.Add(new SkinListEntry(Path.GetFileName(path), path, null));
 		}
 		if (FilesList.Items.Count > 0)
 		{
@@ -334,9 +361,12 @@ public partial class MainView : UserControl
 		}
 	}
 
+	private SkinListEntry? CurrentEntry() => FilesList.SelectedItem as SkinListEntry;
+
 	private void OpenSelected()
 	{
-		if (FilesList.SelectedItem is not string path)
+		SkinListEntry? entry = CurrentEntry();
+		if (entry == null)
 		{
 			ClearPreviews();
 			return;
@@ -344,16 +374,18 @@ public partial class MainView : UserControl
 		try
 		{
 			McArmModel armModel = SlimCheck.IsChecked == true ? McArmModel.Slim : McArmModel.Classic;
-			m_skin = MinecraftSkin.Load(path, armModel);
+			m_skin = entry.Builtin == null
+				? MinecraftSkin.Load(entry.FilePath!, armModel)
+				: McBuiltinSkins.Load(entry.Builtin, armModel);
 			m_atlas = MinecraftSkinConverter.Convert(m_skin, OverlayCheck.IsChecked == true);
 			// 选中转换皮肤后，SC 3D 预览回到「当前转换结果」；选中内置皮肤时另由 OnDefaultSkinSelected 覆盖。
 			m_selectedDefaultAtlas = null;
 			UpdatePreviews();
-			SetStatus($"{Path.GetFileName(path)} | {m_skin.SourceDescription} | 手臂={(m_skin.ArmModel == McArmModel.Slim ? "Slim" : "Classic")} | 第二层={(m_skin.HasOverlay && OverlayCheck.IsChecked == true ? "已合成" : "未合成")} | 输出={m_outputDirectory}");
+			SetStatus($"{entry.DisplayName} | {m_skin.SourceDescription} | 手臂={(m_skin.ArmModel == McArmModel.Slim ? "Slim" : "Classic")} | 第二层={(m_skin.HasOverlay && OverlayCheck.IsChecked == true ? "已合成" : "未合成")} | 输出={m_outputDirectory}");
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 皮肤读取失败 文件={path} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
+			Trace.WriteLine($"[CharacterSkinsMC] 皮肤读取失败 文件={entry.DisplayName} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
 			SetStatus($"读取失败：{ex.Message}");
 			ClearPreviews();
 		}
@@ -631,12 +663,13 @@ public partial class MainView : UserControl
 
 	private void SaveCurrent()
 	{
-		if (m_atlas == null || FilesList.SelectedItem is not string path)
+		SkinListEntry? entry = CurrentEntry();
+		if (m_atlas == null || entry == null)
 		{
 			SetStatus("请先在列表中选择一个皮肤。");
 			return;
 		}
-		string output = Path.Combine(m_outputDirectory, Path.GetFileNameWithoutExtension(path) + ".scskin");
+		string output = Path.Combine(m_outputDirectory, entry.OutputName + ".scskin");
 		try
 		{
 			string saved = MinecraftSkinConverter.SaveScSkin(m_atlas, output);
@@ -653,32 +686,34 @@ public partial class MainView : UserControl
 
 	private void BatchConvert()
 	{
-		var paths = FilesList.Items.OfType<string>().ToList();
-		if (paths.Count == 0)
+		var entries = FilesList.Items.OfType<SkinListEntry>().ToList();
+		if (entries.Count == 0)
 		{
-			SetStatus("输入目录中没有 PNG 皮肤。");
+			SetStatus("列表中没有 PNG 皮肤。");
 			return;
 		}
 		int success = 0;
 		var failures = new List<string>();
-		foreach (string path in paths)
+		foreach (SkinListEntry entry in entries)
 		{
 			try
 			{
 				McArmModel armModel = SlimCheck.IsChecked == true ? McArmModel.Slim : McArmModel.Classic;
-				MinecraftSkin skin = MinecraftSkin.Load(path, armModel);
+				MinecraftSkin skin = entry.Builtin == null
+					? MinecraftSkin.Load(entry.FilePath!, armModel)
+					: McBuiltinSkins.Load(entry.Builtin, armModel);
 				RgbaImage atlas = MinecraftSkinConverter.Convert(skin, OverlayCheck.IsChecked == true);
-				string output = Path.Combine(m_outputDirectory, Path.GetFileNameWithoutExtension(path) + ".scskin");
+				string output = Path.Combine(m_outputDirectory, entry.OutputName + ".scskin");
 				MinecraftSkinConverter.SaveScSkin(atlas, output);
 				success++;
 			}
 			catch (Exception ex)
 			{
-				Trace.WriteLine($"[CharacterSkinsMC] 批量转换失败 文件={path} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
-				failures.Add($"{Path.GetFileName(path)}：{ex.Message}");
+				Trace.WriteLine($"[CharacterSkinsMC] 批量转换失败 文件={entry.DisplayName} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
+				failures.Add($"{entry.DisplayName}：{ex.Message}");
 			}
 		}
-		string message = $"批量转换完成 {success}/{paths.Count}，输出目录：{m_outputDirectory}";
+		string message = $"批量转换完成 {success}/{entries.Count}，输出目录：{m_outputDirectory}";
 		if (failures.Count > 0)
 		{
 			message += "；失败：" + string.Join("；", failures.Take(6));

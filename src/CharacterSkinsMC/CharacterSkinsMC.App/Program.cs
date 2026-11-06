@@ -278,6 +278,17 @@ internal static class Program
 				}
 				defaultSkinCount++;
 			}
+			// 内置 Minecraft 示例皮肤必须能从内嵌资源加载并完成转译。
+			foreach (McBuiltinSkin builtin in McBuiltinSkins.All)
+			{
+				MinecraftSkin builtinSkin = McBuiltinSkins.Load(builtin, McArmModel.Classic);
+				RgbaImage builtinAtlas = MinecraftSkinConverter.Convert(builtinSkin, composeOverlay: true);
+				if (builtinAtlas.Width != 64 || builtinAtlas.Height != 64)
+				{
+					throw new InvalidOperationException($"内置皮肤 {builtin.Id} 转译产物尺寸异常。");
+				}
+			}
+
 			int maleTriangles = ScDefaultSkins.LoadModel(ScPlayerClass.Male).Triangles.Count;
 			int femaleTriangles = ScDefaultSkins.LoadModel(ScPlayerClass.Female).Triangles.Count;
 			var scMalePreview = ScModelPreview.Render(atlas, ScPlayerClass.Male, 300, 400, 35, 18);

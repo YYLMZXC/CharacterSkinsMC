@@ -66,7 +66,13 @@ public sealed class MinecraftSkin
 		{
 			throw new FileNotFoundException("找不到皮肤文件。", path);
 		}
-		RgbaImage source = RgbaImage.FromFile(path);
+		return Load(File.ReadAllBytes(path), requestedArmModel);
+	}
+
+	/// <summary>从 PNG 字节加载（供内嵌皮肤等无文件路径来源使用）。</summary>
+	public static MinecraftSkin Load(byte[] png, McArmModel requestedArmModel)
+	{
+		RgbaImage source = RgbaImage.FromMemory(png);
 		int width = source.Width;
 		int height = source.Height;
 
