@@ -39,12 +39,18 @@
 			</Grid>
 			<TabControl Grid.Column="1" Margin="4,0,0,0">
 				<TabItem Header="MC 皮肤">
-					<ScrollViewer Background="White">
-						<Image x:Name="McPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
-					</ScrollViewer>
+					<DockPanel>
+						<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
+						           Text="Minecraft 原版 64×64 双层皮肤布局：蓝框为基础层、橙框为第二层，取自 MC 分区表。" />
+						<ScrollViewer Background="White">
+							<Image x:Name="McPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+						</ScrollViewer>
+					</DockPanel>
 				</TabItem>
 				<TabItem Header="SC 图集">
 					<DockPanel>
+						<TextBlock DockPanel.Dock="Top" Margin="6,4" TextWrapping="Wrap" Foreground="#FF505864"
+						           Text="Survivalcraft 原版 64×64 图集分区：绿框按左侧性别套用男/女两套 SC UV 表，与 MC 分区、转译落点均无关。" />
 						<StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,4" Spacing="8">
 							<CheckBox x:Name="CompareCheck" Content="与默认皮肤对比" IsChecked="True" />
 							<TextBlock Text="对照皮肤" VerticalAlignment="Center" />
@@ -96,7 +102,7 @@
 				<TabItem Header="SC 默认皮肤">
 					<Grid RowDefinitions="Auto,*" ColumnDefinitions="240,*">
 						<TextBlock Grid.Row="0" Grid.ColumnSpan="2" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
-						           Text="内置 8 张 Survivalcraft 默认人物皮肤（男 4 张 / 女 4 张）；按左侧「SC 模型性别」切换，选中后可在 SC 3D 预览中查看。" />
+						           Text="内置 8 张 Survivalcraft 默认人物皮肤（男 4 张 / 女 4 张）；按左侧「SC 模型性别」切换，绿框按该皮肤性别套用对应 SC UV 表，选中后可在 SC 3D 预览中查看。" />
 						<StackPanel Grid.Row="1" Grid.Column="0" Margin="6,0" Spacing="4">
 							<ListBox x:Name="DefaultSkinList" SelectionChanged="OnDefaultSkinSelected" />
 							<Button Content="导出选中皮肤 .scskin" Click="OnExportDefaultSkinClick" />

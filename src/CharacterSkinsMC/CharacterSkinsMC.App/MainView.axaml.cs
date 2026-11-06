@@ -36,6 +36,17 @@ public partial class MainView : UserControl
 	private ScPlayerClass CurrentPlayerClass =>
 		PlayerClassCombo.SelectedIndex == 1 ? ScPlayerClass.Female : ScPlayerClass.Male;
 
+	/// <summary>转译结果页按左侧性别选择 SC 原版分区表。</summary>
+	private ScUvLayout CurrentUvLayout => ScUvLayouts.Get(CurrentPlayerClass);
+
+	/// <summary>内置默认皮肤页按选中皮肤自身的性别选择分区表。</summary>
+	private ScUvLayout DefaultSkinUvLayout =>
+		ScUvLayouts.Get(CurrentDefaultSkin()?.PlayerClass ?? CurrentPlayerClass);
+
+	/// <summary>对照皮肤列按对照皮肤自身的性别选择分区表。</summary>
+	private ScUvLayout ReferenceUvLayout =>
+		ScUvLayouts.Get(m_referenceSkin?.PlayerClass ?? CurrentPlayerClass);
+
 	public MainView()
 	{
 		InitializeComponent();
@@ -70,7 +81,7 @@ public partial class MainView : UserControl
 		{
 			if (e.Property == CheckBox.IsCheckedProperty)
 			{
-				UpdatePreviews();
+				RefreshGuides();
 			}
 		};
 		this.DetachedFromVisualTree += (_, _) => m_timer.Stop();
@@ -157,7 +168,7 @@ public partial class MainView : UserControl
 
 	private void OnConvertOptionChanged(object? sender, RoutedEventArgs e) => OpenSelected();
 
-	private void OnGuidesChanged(object? sender, RoutedEventArgs e) => UpdatePreviews();
+	private void OnGuidesChanged(object? sender, RoutedEventArgs e) => RefreshGuides();
 
 	private void OnListDragOver(object? sender, DragEventArgs e)
 	{
@@ -277,10 +288,45 @@ public partial class MainView : UserControl
 			return;
 		}
 		SetImage(McPreviewImage, SkinPreview.RenderMcSkin(m_skin, 7, GuidesCheck.IsChecked == true));
-		SetImage(ScPreviewImage, SkinPreview.RenderAtlas(m_atlas, 7, GuidesCheck.IsChecked == true));
+		RefreshScAtlasPreviews();
 		RenderModel();
 		RenderScModel();
+	}
+
+	/// <summary>「显示 UV 分区」开关变化：MC 页用 MC 分区，SC 各页按各自对象切换 SC 分区。</summary>
+	private void RefreshGuides()
+	{
+		if (m_skin != null)
+		{
+			SetImage(McPreviewImage, SkinPreview.RenderMcSkin(m_skin, 7, GuidesCheck.IsChecked == true));
+		}
+		RefreshScAtlasPreviews();
+	}
+
+	/// <summary>刷新所有 SC 平面图：转译结果、内置默认皮肤与三栏对比各取对应的 SC 原版分区。</summary>
+	private void RefreshScAtlasPreviews()
+	{
+		if (m_atlas == null)
+		{
+			SetImage(ScPreviewImage, null);
+		}
+		else
+		{
+			SetImage(ScPreviewImage, SkinPreview.RenderAtlas(m_atlas, 7, GuidesCheck.IsChecked == true, CurrentUvLayout));
+		}
+		RefreshDefaultSkinPreview();
 		UpdateAtlasComparison();
+	}
+
+	private void RefreshDefaultSkinPreview()
+	{
+		if (m_selectedDefaultAtlas == null)
+		{
+			SetImage(DefaultSkinPreviewImage, null);
+			return;
+		}
+		SetImage(DefaultSkinPreviewImage,
+			SkinPreview.RenderAtlas(m_selectedDefaultAtlas, 7, GuidesCheck.IsChecked == true, DefaultSkinUvLayout));
 	}
 
 	private void RenderModel()
@@ -340,13 +386,15 @@ public partial class MainView : UserControl
 		RgbaImage current = m_atlas!;
 		RgbaImage reference = m_referenceAtlas!;
 		bool guides = GuidesCheck.IsChecked == true;
+		ScUvLayout currentLayout = CurrentUvLayout;
+		ScUvLayout referenceLayout = ReferenceUvLayout;
 		try
 		{
-			SetImage(CompareCurrentImage, SkinPreview.RenderAtlas(current, 5, guides));
-			SetImage(CompareReferenceImage, SkinPreview.RenderAtlas(reference, 5, guides));
+			SetImage(CompareCurrentImage, SkinPreview.RenderAtlas(current, 5, guides, currentLayout));
+			SetImage(CompareReferenceImage, SkinPreview.RenderAtlas(reference, 5, guides, referenceLayout));
 			ScAtlasDiff diff = ScAtlasComparison.Compare(current, reference);
-			SetImage(CompareDiffImage, ScAtlasComparison.RenderDifference(current, reference, 5, guides));
-			CompareStats.Text = $"对照 {m_referenceSkin?.Caption ?? "默认皮肤"}：不同 {diff.DifferentPixels}/{diff.TotalPixels} 像素，相似度 {diff.Similarity:P1}";
+			SetImage(CompareDiffImage, ScAtlasComparison.RenderDifference(current, reference, 5, guides, currentLayout));
+			CompareStats.Text = $"对照 {m_referenceSkin?.Caption ?? "默认皮肤"}：不同 {diff.DifferentPixels}/{diff.TotalPixels} 像素，相似度 {diff.Similarity:P1}；UV 分区 转译结果={currentLayout.Name} / 对照={referenceLayout.Name}";
 		}
 		catch (Exception ex)
 		{
@@ -380,6 +428,7 @@ public partial class MainView : UserControl
 			return;
 		}
 		LoadDefaultSkins();
+		RefreshScAtlasPreviews();
 		RenderScModel();
 	}
 
@@ -402,22 +451,23 @@ public partial class MainView : UserControl
 		if (skin == null)
 		{
 			m_selectedDefaultAtlas = null;
-			SetImage(DefaultSkinPreviewImage, null);
+			RefreshDefaultSkinPreview();
 			RenderScModel();
 			return;
 		}
 		try
 		{
 			m_selectedDefaultAtlas = ScDefaultSkins.LoadSkin(skin);
-			SetImage(DefaultSkinPreviewImage, SkinPreview.RenderAtlas(m_selectedDefaultAtlas, 7, GuidesCheck.IsChecked == true));
+			RefreshDefaultSkinPreview();
 			RenderScModel();
-			SetStatus($"内置皮肤 {skin.Caption} | SC 模型={(CurrentPlayerClass == ScPlayerClass.Male ? "男" : "女")} | SC 3D 预览已切换为该皮肤 | 输出={m_outputDirectory}");
+			SetStatus($"内置皮肤 {skin.Caption} | SC 模型={(CurrentPlayerClass == ScPlayerClass.Male ? "男" : "女")} | UV 分区={DefaultSkinUvLayout.Name} | SC 3D 预览已切换为该皮肤 | 输出={m_outputDirectory}");
 		}
 		catch (Exception ex)
 		{
 			Trace.WriteLine($"[CharacterSkinsMC] 内置皮肤读取失败 标识={skin.Id} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
 			SetStatus($"内置皮肤读取失败：{ex.Message}");
 			m_selectedDefaultAtlas = null;
+			RefreshDefaultSkinPreview();
 		}
 	}
 
@@ -479,11 +529,10 @@ public partial class MainView : UserControl
 		m_skin = null;
 		m_atlas = null;
 		SetImage(McPreviewImage, null);
-		SetImage(ScPreviewImage, null);
 		SetImage(ModelPreviewImage, null);
 		// 内置默认皮肤与 SC 3D 预览不依赖输入目录，保持可见。
+		RefreshScAtlasPreviews();
 		RenderScModel();
-		UpdateAtlasComparison();
 	}
 
 	/// <summary>RgbaImage 经 PNG 解码为 Avalonia 位图；替换前释放旧图。</summary>

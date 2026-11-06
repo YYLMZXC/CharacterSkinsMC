@@ -7,11 +7,21 @@ Minecraft 皮肤 → Survivalcraft（生存战争）皮肤转换工具。
 - 读取 64×64 Minecraft 皮肤（Classic / Slim 3px 手臂，自动识别或手动切换）
 - 支持合成第二层（帽子 / 外套）到图集
 - 转换为 Survivalcraft `.scskin` 图集，输出到指定目录即可被游戏读取
-- 预览：MC 皮肤平面图、SC 图集（可选 UV 分区参考线）、MC 3D 立方体预览、SC 专属 3D 预览（真实 HumanMale/HumanFemale.dae 模型，可自动旋转）
+- 预览：MC 皮肤平面图（MC 分区）、SC 图集（SC 男/女分区参考线）、MC 3D 立方体预览、SC 专属 3D 预览（真实 HumanMale/HumanFemale.dae 模型，可自动旋转）
 - SC 图集对比：转译结果 / 任意内置默认皮肤 / 差异高亮三栏并列，显示差异像素数与相似度（灰=一致，红=不同）
 - 内置 Survivalcraft 全部 8 张默认人物皮肤（男 4 / 女 4）：按性别切换、查看图集、在 SC 3D 预览中试穿、导出 `.scskin`
 - 批量转换输入目录中的全部 PNG 皮肤
 - 输入目录 `CharacterSkinsMC` 与输出目录 `CharacterSkins` 自动创建；也可把 PNG 直接拖入文件列表
+
+## UV 分区（两套互不混用）
+
+- **MC 分区**（`McUvLayouts`）：Minecraft 64×64 双层皮肤布局，以 `MinecraftSkin.GetFaceRect` 为唯一事实源；蓝框为基础层、橙框为第二层，仅用于「MC 皮肤」页。
+- **SC 分区**（`ScUvLayouts`）：Survivalcraft 原版 64×64 图集区块，绿框用于「SC 图集」「SC 默认皮肤」「SC 图集对比」页，按性别维护两套表：
+  - 男（Walter）：头部 16×16，躯干/手臂高 24，腿部自 Y=40 起；
+  - 女（Doris）：头部与男一致，躯干/手臂高 20，腿部自 Y=36 起。
+- `ScSkinAtlas.Regions` 是「MC 盒面 → SC 图集」的转译落点，只供 `MinecraftSkinConverter` 生成像素，**不是**原版 UV 分区，也不参与任何参考线绘制。
+- 「SC 图集」页按左侧「SC 模型性别」切表；「SC 默认皮肤」页按选中皮肤的性别切表；对比页的对照皮肤列按其自身性别切表，状态栏会显示实际使用的表名。
+- `--dump` 额外导出 `preview-sc-uv-male.png` 与 `preview-sc-uv-female.png`，`--smoke` 会校验两套表的坐标、边界与渲染互异性。
 
 ## 版本号
 

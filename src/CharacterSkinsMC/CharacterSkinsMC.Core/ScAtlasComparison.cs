@@ -38,10 +38,12 @@ public static class ScAtlasComparison
 		return new ScAtlasDiff(total, different, total == 0 ? 1.0 : 1.0 - (double)different / total);
 	}
 
-	public static RgbaImage RenderDifference(RgbaImage current, RgbaImage reference, int scale, bool guides)
+	/// <summary>差异图上的参考线由调用方按当前预览对象选定 SC 原版分区，不使用转译岛矩形。</summary>
+	public static RgbaImage RenderDifference(RgbaImage current, RgbaImage reference, int scale, bool guides, ScUvLayout layout)
 	{
 		ArgumentNullException.ThrowIfNull(current);
 		ArgumentNullException.ThrowIfNull(reference);
+		ArgumentNullException.ThrowIfNull(layout);
 		Validate(current);
 		Validate(reference);
 		scale = Math.Max(1, scale);
@@ -74,9 +76,9 @@ public static class ScAtlasComparison
 		DrawGrid(result, size, scale);
 		if (guides)
 		{
-			foreach (ScRegion region in ScSkinAtlas.Regions)
+			foreach (ScUvRegion region in layout.Regions)
 			{
-				DrawOutline(result, region.Dest, scale, new RgbaColor(40, 40, 48, 120));
+				DrawOutline(result, region.Rect, scale, new RgbaColor(40, 40, 48, 120));
 			}
 		}
 		return result;

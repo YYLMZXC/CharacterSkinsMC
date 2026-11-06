@@ -43,7 +43,7 @@ internal static class Program
 		RgbaImage atlas = MinecraftSkinConverter.Convert(skin, composeOverlay: true);
 		MinecraftSkinConverter.SaveScSkin(atlas, Path.Combine(directory, "sample-skin.scskin"));
 		var mcPreview = SkinPreview.RenderMcSkin(skin, 8, guides: true);
-		var scPreview = SkinPreview.RenderAtlas(atlas, 8, guides: true);
+		var scPreview = SkinPreview.RenderAtlas(atlas, 8, guides: true, layout: ScUvLayouts.Male);
 		var modelPreview = SkinPreview.Render3D(skin, composeOverlay: true, 480, 560, 35, 18);
 		mcPreview.SavePng(Path.Combine(directory, "preview-mc.png"));
 		scPreview.SavePng(Path.Combine(directory, "preview-sc.png"));
@@ -55,6 +55,11 @@ internal static class Program
 		RgbaImage femaleAtlas = ScDefaultSkins.LoadSkin(femaleSkin);
 		maleAtlas.SavePng(Path.Combine(directory, $"default-{maleSkin.DisplayName}.png"));
 		femaleAtlas.SavePng(Path.Combine(directory, $"default-{femaleSkin.DisplayName}.png"));
+		// 男/女原版图集各套自己的 SC 分区参考线，供人工核对矩形是否对齐。
+		SkinPreview.RenderAtlas(maleAtlas, 8, guides: true, layout: ScUvLayouts.Male)
+			.SavePng(Path.Combine(directory, "preview-sc-uv-male.png"));
+		SkinPreview.RenderAtlas(femaleAtlas, 8, guides: true, layout: ScUvLayouts.Female)
+			.SavePng(Path.Combine(directory, "preview-sc-uv-female.png"));
 		// 男模型贴转译结果、女模型贴内置默认皮肤，两条通道都能人工核对。
 		var scMale = ScModelPreview.Render(atlas, ScDefaultSkins.LoadModel(ScPlayerClass.Male), 480, 560, 35, 18);
 		var scFemale = ScModelPreview.Render(femaleAtlas, ScDefaultSkins.LoadModel(ScPlayerClass.Female), 480, 560, 35, 18);
@@ -63,9 +68,9 @@ internal static class Program
 		var scMaleDefault = ScModelPreview.Render(maleAtlas, ScDefaultSkins.LoadModel(ScPlayerClass.Male), 480, 560, 0, 18);
 		scMaleDefault.SavePng(Path.Combine(directory, "preview-sc3d-male-default.png"));
 		ScAtlasDiff comparison = ScAtlasComparison.Compare(atlas, maleAtlas);
-		ScAtlasComparison.RenderDifference(atlas, maleAtlas, 6, true)
+		ScAtlasComparison.RenderDifference(atlas, maleAtlas, 6, true, ScUvLayouts.Male)
 			.SavePng(Path.Combine(directory, "preview-atlas-diff.png"));
-		Console.WriteLine($"预览已导出到：{directory}；与 {maleSkin.Caption} 差异 {comparison.DifferentPixels}/{comparison.TotalPixels} 像素");
+		Console.WriteLine($"预览已导出到：{directory}；与 {maleSkin.Caption} 差异 {comparison.DifferentPixels}/{comparison.TotalPixels} 像素；UV 分区 MC={McUvLayouts.Create(skin).Regions.Count} 区 / SC 男={ScUvLayouts.Male.Regions.Count} 区 / SC 女={ScUvLayouts.Female.Regions.Count} 区");
 	}
 
 	private static void BuildSampleSkin(string path)
@@ -113,6 +118,70 @@ internal static class Program
 				image.SetPixel(rect.X + x, rect.Y + y, color);
 			}
 		}
+	}
+
+	/// <summary>自检两套分区配置：MC 表来自皮肤布局，SC 男/女表各自维护且互不串用。</summary>
+	private static void ValidateUvLayouts(MinecraftSkin skin, RgbaImage atlas)
+	{
+		McUvLayout mcLayout = McUvLayouts.Create(skin);
+		if (mcLayout.Regions.Count != 72)
+		{
+			throw new InvalidOperationException("MC 分区表应包含 6 部位 × 6 面 × 基础层/第二层共 72 个区块。");
+		}
+		ValidateScLayout(ScUvLayouts.Male, ScPlayerClass.Male, 24, 40);
+		ValidateScLayout(ScUvLayouts.Female, ScPlayerClass.Female, 20, 36);
+
+		// 同一张图集用两套 SC 表绘制，参考线必须不同；关掉参考线后两表必须给出完全相同的图像。
+		RgbaImage maleGuides = SkinPreview.RenderAtlas(atlas, 2, true, ScUvLayouts.Male);
+		RgbaImage femaleGuides = SkinPreview.RenderAtlas(atlas, 2, true, ScUvLayouts.Female);
+		RgbaImage malePlain = SkinPreview.RenderAtlas(atlas, 2, false, ScUvLayouts.Male);
+		RgbaImage femalePlain = SkinPreview.RenderAtlas(atlas, 2, false, ScUvLayouts.Female);
+		if (!ImagesDiffer(maleGuides, femaleGuides) || ImagesDiffer(malePlain, femalePlain))
+		{
+			throw new InvalidOperationException("SC 男/女分区表的参考线未生效，或分区表改动了图像像素。");
+		}
+	}
+
+	private static void ValidateScLayout(ScUvLayout layout, ScPlayerClass playerClass, int torsoHeight, int legY)
+	{
+		if (layout.PlayerClass != playerClass || layout.Regions.Count != 14)
+		{
+			throw new InvalidOperationException($"SC {playerClass} 分区表的性别或条目数不符。");
+		}
+		foreach (ScUvRegion region in layout.Regions)
+		{
+			Rect rect = region.Rect;
+			if (rect.X < 0 || rect.Y < 0 || rect.W <= 0 || rect.H <= 0 ||
+				rect.X + rect.W > ScSkinAtlas.Size || rect.Y + rect.H > ScSkinAtlas.Size)
+			{
+				throw new InvalidOperationException($"SC 分区表 {layout.Name} 的 {region.Name} 超出 64×64 图集。");
+			}
+		}
+		Rect? torso = layout.Find("躯干前");
+		Rect? leg = layout.Find("右腿前");
+		if (torso == null || torso.Value.H != torsoHeight || leg == null || leg.Value.Y != legY)
+		{
+			throw new InvalidOperationException($"SC 分区表 {layout.Name} 的躯干高度或腿部起点不符。");
+		}
+	}
+
+	private static bool ImagesDiffer(RgbaImage a, RgbaImage b)
+	{
+		if (a.Width != b.Width || a.Height != b.Height)
+		{
+			return true;
+		}
+		for (int y = 0; y < a.Height; y++)
+		{
+			for (int x = 0; x < a.Width; x++)
+			{
+				if (a.GetPixel(x, y) != b.GetPixel(x, y))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/// <summary>无界面自检：验证归一化、双层合成、图集转译、落盘与三种预览渲染。</summary>
@@ -179,8 +248,9 @@ internal static class Program
 			}
 
 			var mcPreview = SkinPreview.RenderMcSkin(skin, 4, guides: true);
-			var scPreview = SkinPreview.RenderAtlas(atlas, 4, guides: true);
+			var scPreview = SkinPreview.RenderAtlas(atlas, 4, guides: true, layout: ScUvLayouts.Male);
 			var modelPreview = SkinPreview.Render3D(skin, composeOverlay: true, 300, 400, 35, 18);
+			ValidateUvLayouts(skin, atlas);
 
 			// 8 张内置默认皮肤与男女模型必须全部可用，且 SC 专属 3D 预览可渲染。
 			int defaultSkinCount = 0;
@@ -222,7 +292,7 @@ internal static class Program
 			RgbaImage referenceForDiff = ScDefaultSkins.LoadSkin(ScDefaultSkins.All[0]);
 			ScAtlasDiff selfComparison = ScAtlasComparison.Compare(atlas, atlas);
 			ScAtlasDiff defaultComparison = ScAtlasComparison.Compare(atlas, referenceForDiff);
-			RgbaImage differencePreview = ScAtlasComparison.RenderDifference(atlas, referenceForDiff, 2, true);
+			RgbaImage differencePreview = ScAtlasComparison.RenderDifference(atlas, referenceForDiff, 2, true, ScUvLayouts.Male);
 			if (selfComparison.DifferentPixels != 0 || selfComparison.TotalPixels != 4096 ||
 				defaultComparison.TotalPixels != 4096 || defaultComparison.DifferentPixels < 0 ||
 				defaultComparison.DifferentPixels > 4096 || differencePreview.Width != 128)

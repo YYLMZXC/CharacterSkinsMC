@@ -8,6 +8,7 @@ namespace CharacterSkinsMC.Core;
 /// <summary>
 /// 三种预览：Minecraft 原图、转换后的 SC 图集、Minecraft 皮肤 3D 立方体预览。
 /// 原实现依赖 System.Drawing（Android 不可用），现改为纯托管软件光栅化，统一输出 RgbaImage。
+/// 平面图的两套参考线互不共用：MC 皮肤页取 McUvLayouts，SC 图集页取调用方传入的 ScUvLayout。
 /// </summary>
 public static class SkinPreview
 {
@@ -21,24 +22,25 @@ public static class SkinPreview
 		DrawGrid(result, size, scale);
 		if (guides)
 		{
-			foreach (McBodyPart part in Enum.GetValues<McBodyPart>())
+			foreach (McUvRegion region in McUvLayouts.Create(skin).Regions)
 			{
-				foreach (McFace face in Enum.GetValues<McFace>())
-				{
-					DrawRegionOutline(result, skin.GetFaceRect(part, face), scale, new RgbaColor(60, 200, 255, 150));
-					if (skin.HasOverlay)
-					{
-						DrawRegionOutline(result, skin.GetFaceRect(part, face, overlay: true), scale, new RgbaColor(255, 180, 60, 150));
-					}
-				}
+				RgbaColor color = region.IsOverlay
+					? new RgbaColor(255, 180, 60, 150)
+					: new RgbaColor(60, 200, 255, 150);
+				DrawRegionOutline(result, region.Rect, scale, color);
 			}
 		}
 		return result;
 	}
 
-	public static RgbaImage RenderAtlas(RgbaImage atlas, int scale, bool guides)
+	/// <summary>
+	/// 渲染 SC 图集平面图。layout 必须由调用方按预览对象（转译结果 / 男默认皮肤 / 女默认皮肤）选定，
+	/// 不设默认值，防止把 Minecraft 分区或转译岛矩形误套到 SC 原版图集上。
+	/// </summary>
+	public static RgbaImage RenderAtlas(RgbaImage atlas, int scale, bool guides, ScUvLayout layout)
 	{
 		ArgumentNullException.ThrowIfNull(atlas);
+		ArgumentNullException.ThrowIfNull(layout);
 		int size = ScSkinAtlas.Size * Math.Max(1, scale);
 		var result = new RgbaImage(size, size);
 		DrawCheckerboard(result, size, Math.Max(4, scale * 8));
@@ -46,9 +48,9 @@ public static class SkinPreview
 		DrawGrid(result, size, scale);
 		if (guides)
 		{
-			foreach (ScRegion region in ScSkinAtlas.Regions)
+			foreach (ScUvRegion region in layout.Regions)
 			{
-				DrawRegionOutline(result, region.Dest, scale, new RgbaColor(120, 255, 140, 130));
+				DrawRegionOutline(result, region.Rect, scale, new RgbaColor(120, 255, 140, 130));
 			}
 		}
 		return result;

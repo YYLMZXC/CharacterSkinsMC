@@ -2,9 +2,13 @@
 namespace CharacterSkinsMC.Core;
 
 /// <summary>
-/// 一条转译规则：把 Minecraft 某个面的 [U0,U1]×[V0,V1] 区间，按最近邻采样写入 SC 图集的目标矩形。
+/// 一条转译规则：把 Minecraft 某个面的 [U0,U1]×[V0,V1] 区间，按最近邻采样写入转译产物的目标矩形。
 /// 矩形边界来自本仓 HumanMale.dae 的 UV 岛与内置 HumanMale1.webp 的不透明区域实测。
 /// </summary>
+/// <remarks>
+/// 这些矩形是「MC 像素的落点」，不是 Survivalcraft 原版 64×64 图集的 UV 分区；
+/// 预览参考线一律使用 ScUvLayouts 的男/女两套原版分区，本表只供 MinecraftSkinConverter 生成像素。
+/// </remarks>
 public sealed record ScRegion(
 	string Name,
 	Rect Dest,
@@ -16,7 +20,10 @@ public sealed record ScRegion(
 	double V1 = 1.0,
 	bool MirrorX = false);
 
-/// <summary>Survivalcraft 人物皮肤 64×64 图集的分区布局。</summary>
+/// <summary>
+/// MC 盒面 → SC 图集的转译规则集合，以及转译产物的固定尺寸。
+/// 本表不是原版皮肤 UV 分区，详见 ScUvLayouts。
+/// </summary>
 public static class ScSkinAtlas
 {
 	public const int Size = 64;
