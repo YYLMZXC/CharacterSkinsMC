@@ -1,13 +1,12 @@
 #nullable enable
 using System;
-using System.IO;
 
 namespace CharacterSkinsMC.Core;
 
 /// <summary>Minecraft 皮肤转 Survivalcraft 皮肤的可复用公开 API。</summary>
 public static class MinecraftSkinConverter
 {
-	public const int AtlasSize = ScSkinAtlas.Size;
+	public const int AtlasSize = SkinDimensions.AtlasSize;
 
 	/// <summary>
 	/// 生成 64×64 的 Survivalcraft 皮肤图集。
@@ -74,18 +73,4 @@ public static class MinecraftSkinConverter
 		return atlas.ToPngBytes();
 	}
 
-	/// <summary>把图集写成 .scskin 文件；未带扩展名时自动补全。</summary>
-	public static string SaveScSkin(RgbaImage atlas, string path)
-	{
-		ArgumentNullException.ThrowIfNull(atlas);
-		if (string.IsNullOrWhiteSpace(path))
-		{
-			throw new ArgumentException("输出路径不能为空。", nameof(path));
-		}
-		string directory = Path.GetDirectoryName(Path.GetFullPath(path)) ?? throw new ArgumentException("输出路径无效。", nameof(path));
-		Directory.CreateDirectory(directory);
-		string fullPath = Path.ChangeExtension(Path.GetFullPath(path), ".scskin");
-		atlas.SavePng(fullPath);
-		return fullPath;
-	}
 }

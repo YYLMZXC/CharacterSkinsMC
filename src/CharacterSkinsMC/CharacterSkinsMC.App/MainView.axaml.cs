@@ -13,17 +13,25 @@ using RadioButton = Avalonia.Controls.RadioButton;
 using ScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using CharacterSkinsMC.App.Infrastructure;
+using CharacterSkinsMC.App.Presentation;
+using CharacterSkinsMC.App.Services;
 using CharacterSkinsMC.Core;
+// 旋转 / 布局 / 预览尺寸常量统一定义在 PreviewLayout，视图内直接引用。
+using static CharacterSkinsMC.App.Presentation.PreviewLayout;
 
 namespace CharacterSkinsMC.App;
 
+/// <summary>
+/// 主界面只负责控件交互与预览状态：皮肤来源、转换、持久化由 SkinWorkspace 编排，
+/// 平台能力由 IAppEnvironment 提供，像素图到位图的转换由 PreviewImages 承担。
+/// </summary>
 public partial class MainView : UserControl
 {
-	private string m_inputDirectory;
-	private string m_outputDirectory;
+	private readonly IAppEnvironment m_environment = new AppEnvironment();
+	private readonly SkinWorkspace m_workspace;
 	private MinecraftSkin? m_skin;
 	private RgbaImage? m_atlas;
 	private RgbaImage? m_selectedDefaultAtlas;
@@ -40,38 +48,6 @@ public partial class MainView : UserControl
 	private readonly Dictionary<ScPlayerClass, ScModel> m_models = new();
 	private readonly DispatcherTimer m_timer;
 	private readonly Stopwatch m_rotationClock = Stopwatch.StartNew();
-
-	private const double MinRotationSpeed = 5.0;
-	private const double MaxRotationSpeed = 180.0;
-	private const double MinPitchDegrees = -80.0;
-	private const double MaxPitchDegrees = 80.0;
-	// 拖拽灵敏度：每像素位移对应的旋转角度。
-	private const double DragYawDegreesPerPixel = 0.5;
-	private const double DragPitchDegreesPerPixel = 0.4;
-	private const double CompactLayoutThreshold = 800.0;
-	private const double SidePanelWidth = 320.0;
-
-	/// <summary>输入列表条目：内置皮肤（无磁盘路径）或输入目录中的 PNG 文件。</summary>
-	private sealed class SkinListEntry
-	{
-		public SkinListEntry(string displayName, string? filePath, McBuiltinSkin? builtin)
-		{
-			DisplayName = displayName;
-			FilePath = filePath;
-			Builtin = builtin;
-		}
-
-		public string DisplayName { get; }
-		public string? FilePath { get; }
-		public McBuiltinSkin? Builtin { get; }
-
-		/// <summary>保存 .scskin 时的文件名（不含扩展名）。</summary>
-		public string OutputName => Builtin == null
-			? Path.GetFileNameWithoutExtension(FilePath!)
-			: Builtin.DisplayName;
-
-		public override string ToString() => DisplayName;
-	}
 
 	private ScPlayerClass CurrentPlayerClass =>
 		PlayerClassCombo.SelectedIndex == 1 ? ScPlayerClass.Female : ScPlayerClass.Male;
@@ -90,13 +66,14 @@ public partial class MainView : UserControl
 	public MainView()
 	{
 		InitializeComponent();
-		m_inputDirectory = ResolveDataDirectory("CharacterSkinsMC");
-		m_outputDirectory = ResolveDataDirectory("CharacterSkins");
+		m_workspace = new SkinWorkspace(
+			new SkinFileRepository(new AppPaths(m_environment)),
+			new SkinConversionService());
 
 		m_timer = new DispatcherTimer(TimeSpan.FromMilliseconds(80), DispatcherPriority.Background, OnTimerTick);
 		m_timer.Start();
 
-		if (!OperatingSystem.IsWindows())
+		if (!m_environment.CanOpenDirectory)
 		{
 			OpenInputButton.IsVisible = false;
 		}
@@ -170,7 +147,7 @@ public partial class MainView : UserControl
 		};
 		this.AttachedToVisualTree += (_, _) => ApplyResponsiveLayout(Bounds.Width);
 		PlayerClassCombo.SelectionChanged += OnPlayerClassChanged;
-		AboutVersionText.Text = $"版本 {AboutWindow.GetVersion()}（按构建时间自动生成）";
+		AboutVersionText.Text = $"版本 {AppVersion.Full}（按构建时间自动生成）";
 		// 所有 XAML 命名控件都已填充，才允许事件处理器访问列表与预览控件。
 		m_uiReady = true;
 		UpdateSpeedLabel(SpeedSlider.Value);
@@ -241,28 +218,6 @@ public partial class MainView : UserControl
 			MainTabs.Margin = new Thickness(4, 0, 0, 0);
 			// 宽屏时禁用整页滚动，保持左右两栏各自内部的滚动行为。
 			BodyScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-		}
-	}
-
-	/// <summary>桌面把数据目录放在程序旁，Android 等沙盒平台回退到应用私有数据目录。</summary>
-	private static string ResolveDataDirectory(string name)
-	{
-		try
-		{
-			string root = OperatingSystem.IsAndroid() || OperatingSystem.IsIOS()
-				? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-				: AppContext.BaseDirectory;
-			if (string.IsNullOrWhiteSpace(root))
-			{
-				root = AppContext.BaseDirectory;
-			}
-			string directory = Path.Combine(root, name);
-			Directory.CreateDirectory(directory);
-			return directory;
-		}
-		catch
-		{
-			return AppContext.BaseDirectory;
 		}
 	}
 
@@ -423,27 +378,14 @@ public partial class MainView : UserControl
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 打开皮肤失败 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
-			SetStatus($"打开皮肤失败：{ex.Message}");
+			SetStatus(AppLog.Failure("打开皮肤失败", "打开皮肤失败", ex));
 		}
 	}
 
 	private async Task ImportStorageFileAsync(IStorageFile file)
 	{
-		string fileName = file.Name;
-		if (!Path.GetExtension(fileName).Equals(".png", StringComparison.OrdinalIgnoreCase))
-		{
-			return;
-		}
-		string target = Path.Combine(m_inputDirectory, fileName);
-		string? localPath = file.TryGetLocalPath();
-		if (localPath != null && string.Equals(Path.GetFullPath(localPath), Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
-		{
-			return;
-		}
 		await using Stream source = await file.OpenReadAsync();
-		await using Stream output = File.Create(target);
-		await source.CopyToAsync(output);
+		await m_workspace.ImportAsync(file.Name, source, file.TryGetLocalPath());
 	}
 
 	private void OnRescanClick(object? sender, RoutedEventArgs e) => Rescan();
@@ -451,14 +393,9 @@ public partial class MainView : UserControl
 	private void Rescan()
 	{
 		FilesList.Items.Clear();
-		// 内置示例皮肤始终排在最前，空目录或 Android 沙盒下也能直接转换预览。
-		foreach (McBuiltinSkin builtin in McBuiltinSkins.All)
+		foreach (SkinSource source in m_workspace.GetSources())
 		{
-			FilesList.Items.Add(new SkinListEntry($"内置：{builtin.DisplayName}", null, builtin));
-		}
-		foreach (string path in Directory.GetFiles(m_inputDirectory, "*.png").OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
-		{
-			FilesList.Items.Add(new SkinListEntry(Path.GetFileName(path), path, null));
+			FilesList.Items.Add(source);
 		}
 		if (FilesList.Items.Count > 0)
 		{
@@ -467,15 +404,21 @@ public partial class MainView : UserControl
 		else
 		{
 			ClearPreviews();
-			SetStatus($"输入目录为空：{m_inputDirectory}，请把 Minecraft 的 skin.png 放进去或拖入列表。");
+			SetStatus($"输入目录为空：{m_workspace.InputDirectory}，请把 Minecraft 的 skin.png 放进去或拖入列表。");
 		}
 	}
 
-	private SkinListEntry? CurrentEntry() => FilesList.SelectedItem as SkinListEntry;
+	private SkinSource? CurrentEntry() => FilesList.SelectedItem as SkinSource;
+
+	/// <summary>界面选项 → 服务层参数，业务逻辑不直接读控件。</summary>
+	private ConversionOptions CurrentOptions() => new(
+		ArmSlimRadio.IsChecked == true ? McArmModel.Slim : McArmModel.Classic,
+		OverlayCheck.IsChecked == true,
+		ElytraFillCheck.IsChecked == true);
 
 	private void OpenSelected()
 	{
-		SkinListEntry? entry = CurrentEntry();
+		SkinSource? entry = CurrentEntry();
 		if (entry == null)
 		{
 			ClearPreviews();
@@ -483,20 +426,18 @@ public partial class MainView : UserControl
 		}
 		try
 		{
-			McArmModel armModel = ArmSlimRadio.IsChecked == true ? McArmModel.Slim : McArmModel.Classic;
-			m_skin = entry.Builtin == null
-				? MinecraftSkin.Load(entry.FilePath!, armModel)
-				: McBuiltinSkins.Load(entry.Builtin, armModel);
-			m_atlas = MinecraftSkinConverter.Convert(m_skin, OverlayCheck.IsChecked == true, ElytraFillCheck.IsChecked == true);
+			ConversionOptions options = CurrentOptions();
+			SkinConversionResult result = m_workspace.Open(entry, options);
+			m_skin = result.Skin;
+			m_atlas = result.Atlas;
 			// 选中转换皮肤后，SC 3D 预览回到「当前转换结果」；选中内置皮肤时另由 OnDefaultSkinSelected 覆盖。
 			m_selectedDefaultAtlas = null;
 			UpdatePreviews();
-			SetStatus($"{entry.DisplayName} | {m_skin.SourceDescription} | 手臂={(m_skin.ArmModel == McArmModel.Slim ? "细手（Alex）" : "宽手（Steve）")} | 第二层={(m_skin.HasOverlay && OverlayCheck.IsChecked == true ? "已合成" : "未合成")} | 鞘翅补齐={(ElytraFillCheck.IsChecked == true ? "开" : "关")} | 输出={m_outputDirectory}");
+			SetStatus($"{entry.DisplayName} | {m_skin.SourceDescription} | 手臂={(m_skin.ArmModel == McArmModel.Slim ? "细手（Alex）" : "宽手（Steve）")} | 第二层={(m_skin.HasOverlay && options.ComposeOverlay ? "已合成" : "未合成")} | 鞘翅补齐={(options.FillElytra ? "开" : "关")} | 输出={m_workspace.OutputDirectory}");
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 皮肤读取失败 文件={entry.DisplayName} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
-			SetStatus($"读取失败：{ex.Message}");
+			SetStatus(AppLog.Failure("读取失败", $"皮肤读取失败 文件={entry.DisplayName}", ex));
 			ClearPreviews();
 		}
 	}
@@ -507,7 +448,7 @@ public partial class MainView : UserControl
 		{
 			return;
 		}
-		SetImage(McPreviewImage, SkinPreview.RenderMcSkin(m_skin, 7, GuidesCheck.IsChecked == true));
+		PreviewImages.RenderMcSkin(McPreviewImage, m_skin, AtlasScale, GuidesCheck.IsChecked == true);
 		RefreshScAtlasPreviews();
 		RenderModel();
 		RenderScModel();
@@ -518,7 +459,7 @@ public partial class MainView : UserControl
 	{
 		if (m_skin != null)
 		{
-			SetImage(McPreviewImage, SkinPreview.RenderMcSkin(m_skin, 7, GuidesCheck.IsChecked == true));
+			PreviewImages.RenderMcSkin(McPreviewImage, m_skin, AtlasScale, GuidesCheck.IsChecked == true);
 		}
 		RefreshScAtlasPreviews();
 	}
@@ -526,28 +467,15 @@ public partial class MainView : UserControl
 	/// <summary>刷新所有 SC 平面图：转译结果、内置默认皮肤与三栏对比各取对应的 SC 原版分区。</summary>
 	private void RefreshScAtlasPreviews()
 	{
-		if (m_atlas == null)
-		{
-			SetImage(ScPreviewImage, null);
-		}
-		else
-		{
-			SetImage(ScPreviewImage, SkinPreview.RenderAtlas(m_atlas, 7, GuidesCheck.IsChecked == true, CurrentUvLayout));
-		}
+		PreviewImages.RenderAtlas(ScPreviewImage, m_atlas, AtlasScale,
+			GuidesCheck.IsChecked == true, CurrentUvLayout);
 		RefreshDefaultSkinPreview();
 		UpdateAtlasComparison();
 	}
 
-	private void RefreshDefaultSkinPreview()
-	{
-		if (m_selectedDefaultAtlas == null)
-		{
-			SetImage(DefaultSkinPreviewImage, null);
-			return;
-		}
-		SetImage(DefaultSkinPreviewImage,
-			SkinPreview.RenderAtlas(m_selectedDefaultAtlas, 7, GuidesCheck.IsChecked == true, DefaultSkinUvLayout));
-	}
+	private void RefreshDefaultSkinPreview() =>
+		PreviewImages.RenderAtlas(DefaultSkinPreviewImage, m_selectedDefaultAtlas, AtlasScale,
+			GuidesCheck.IsChecked == true, DefaultSkinUvLayout);
 
 	private void RenderModel()
 	{
@@ -555,8 +483,8 @@ public partial class MainView : UserControl
 		{
 			return;
 		}
-		SetImage(ModelPreviewImage, SkinPreview.Render3D(m_skin, OverlayCheck.IsChecked == true, 460, 540, m_yawDegrees, m_pitchDegrees,
-			FillTransparentCheck.IsChecked == true));
+		PreviewImages.RenderMcModel(ModelPreviewImage, m_skin, OverlayCheck.IsChecked == true,
+			ModelWidth, ModelHeight, m_yawDegrees, m_pitchDegrees, FillTransparentCheck.IsChecked == true);
 	}
 
 	private void OnCompareSkinChanged(object? sender, SelectionChangedEventArgs e)
@@ -584,9 +512,8 @@ public partial class MainView : UserControl
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 对照皮肤读取失败 标识={caption} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
 			m_referenceAtlas = null;
-			SetStatus($"对照皮肤读取失败：{ex.Message}");
+			SetStatus(AppLog.Failure("对照皮肤读取失败", $"对照皮肤读取失败 标识={caption}", ex));
 		}
 	}
 
@@ -611,16 +538,15 @@ public partial class MainView : UserControl
 		ScUvLayout referenceLayout = ReferenceUvLayout;
 		try
 		{
-			SetImage(CompareCurrentImage, SkinPreview.RenderAtlas(current, 5, guides, currentLayout));
-			SetImage(CompareReferenceImage, SkinPreview.RenderAtlas(reference, 5, guides, referenceLayout));
+			PreviewImages.RenderAtlas(CompareCurrentImage, current, CompareScale, guides, currentLayout);
+			PreviewImages.RenderAtlas(CompareReferenceImage, reference, CompareScale, guides, referenceLayout);
 			ScAtlasDiff diff = ScAtlasComparison.Compare(current, reference);
-			SetImage(CompareDiffImage, ScAtlasComparison.RenderDifference(current, reference, 5, guides, currentLayout));
+			PreviewImages.RenderDifference(CompareDiffImage, current, reference, CompareScale, guides, currentLayout);
 			CompareStats.Text = $"对照 {m_referenceSkin?.Caption ?? "默认皮肤"}：不同 {diff.DifferentPixels}/{diff.TotalPixels} 像素，相似度 {diff.Similarity:P1}；UV 分区 转译结果={currentLayout.Name} / 对照={referenceLayout.Name}";
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 图集对比失败 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
-			CompareStats.Text = $"图集对比失败：{ex.Message}";
+			CompareStats.Text = AppLog.Failure("图集对比失败", "图集对比失败", ex);
 		}
 	}
 
@@ -681,12 +607,11 @@ public partial class MainView : UserControl
 			m_selectedDefaultAtlas = ScDefaultSkins.LoadSkin(skin);
 			RefreshDefaultSkinPreview();
 			RenderScModel();
-			SetStatus($"内置皮肤 {skin.Caption} | SC 模型={(CurrentPlayerClass == ScPlayerClass.Male ? "男" : "女")} | UV 分区={DefaultSkinUvLayout.Name} | SC 3D 预览已切换为该皮肤 | 输出={m_outputDirectory}");
+			SetStatus($"内置皮肤 {skin.Caption} | SC 模型={(CurrentPlayerClass == ScPlayerClass.Male ? "男" : "女")} | UV 分区={DefaultSkinUvLayout.Name} | SC 3D 预览已切换为该皮肤 | 输出={m_workspace.OutputDirectory}");
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 内置皮肤读取失败 标识={skin.Id} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
-			SetStatus($"内置皮肤读取失败：{ex.Message}");
+			SetStatus(AppLog.Failure("内置皮肤读取失败", $"内置皮肤读取失败 标识={skin.Id}", ex));
 			m_selectedDefaultAtlas = null;
 			RefreshDefaultSkinPreview();
 		}
@@ -703,14 +628,12 @@ public partial class MainView : UserControl
 		}
 		try
 		{
-			ScModel model = GetModel(CurrentPlayerClass);
-			SetImage(ScModelPreviewImage, ScModelPreview.Render(atlas, model, 460, 540, m_yawDegrees, m_pitchDegrees,
-				FillTransparentCheck.IsChecked == true));
+			PreviewImages.RenderScModel(ScModelPreviewImage, atlas, GetModel(CurrentPlayerClass),
+				ModelWidth, ModelHeight, m_yawDegrees, m_pitchDegrees, FillTransparentCheck.IsChecked == true);
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] SC 模型预览失败 性别={CurrentPlayerClass} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
-			SetStatus($"SC 模型预览失败：{ex.Message}");
+			SetStatus(AppLog.Failure("SC 模型预览失败", $"SC 模型预览失败 性别={CurrentPlayerClass}", ex));
 			SetImage(ScModelPreviewImage, null);
 		}
 	}
@@ -733,16 +656,13 @@ public partial class MainView : UserControl
 			SetStatus("请先选择一张内置默认皮肤。");
 			return;
 		}
-		string output = Path.Combine(m_outputDirectory, $"Survivalcraft-{skin.DisplayName}.scskin");
 		try
 		{
-			string saved = ScDefaultSkins.SaveSkin(skin, output);
-			SetStatus($"已导出内置皮肤：{saved}");
+			SetStatus($"已导出内置皮肤：{m_workspace.ExportDefault(skin)}");
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 导出内置皮肤失败 路径={output} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
-			SetStatus($"导出内置皮肤失败：{ex.Message}");
+			SetStatus(AppLog.Failure("导出内置皮肤失败", $"导出内置皮肤失败 标识={skin.Id}", ex));
 		}
 	}
 
@@ -757,40 +677,26 @@ public partial class MainView : UserControl
 		RenderScModel();
 	}
 
-	/// <summary>RgbaImage 经 PNG 解码为 Avalonia 位图；替换前释放旧图。</summary>
-	private static void SetImage(Image target, RgbaImage? source)
-	{
-		Bitmap? previous = target.Source as Bitmap;
-		target.Source = null;
-		previous?.Dispose();
-		if (source == null)
-		{
-			return;
-		}
-		byte[] png = source.ToPngBytes();
-		target.Source = new Bitmap(new MemoryStream(png));
-	}
+	/// <summary>位图转换与旧图释放由 PreviewImages 统一负责。</summary>
+	private static void SetImage(Image target, RgbaImage? source) => PreviewImages.Set(target, source);
 
 	private void OnSaveCurrentClick(object? sender, RoutedEventArgs e) => SaveCurrent();
 
 	private void SaveCurrent()
 	{
-		SkinListEntry? entry = CurrentEntry();
+		SkinSource? entry = CurrentEntry();
 		if (m_atlas == null || entry == null)
 		{
 			SetStatus("请先在列表中选择一个皮肤。");
 			return;
 		}
-		string output = Path.Combine(m_outputDirectory, entry.OutputName + ".scskin");
 		try
 		{
-			string saved = MinecraftSkinConverter.SaveScSkin(m_atlas, output);
-			SetStatus($"已保存：{saved}");
+			SetStatus($"已保存：{m_workspace.Save(entry, m_atlas)}");
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 保存失败 路径={output} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
-			SetStatus($"保存失败：{ex.Message}");
+			SetStatus(AppLog.Failure("保存失败", $"保存失败 文件={entry.DisplayName}", ex));
 		}
 	}
 
@@ -798,56 +704,35 @@ public partial class MainView : UserControl
 
 	private void BatchConvert()
 	{
-		var entries = FilesList.Items.OfType<SkinListEntry>().ToList();
+		var entries = FilesList.Items.OfType<SkinSource>().ToList();
 		if (entries.Count == 0)
 		{
 			SetStatus("列表中没有 PNG 皮肤。");
 			return;
 		}
-		int success = 0;
-		var failures = new List<string>();
-		foreach (SkinListEntry entry in entries)
+		BatchConversionReport report = m_workspace.SaveAll(entries, CurrentOptions());
+		string message = $"批量转换完成 {report.Succeeded}/{report.Total}，输出目录：{m_workspace.OutputDirectory}";
+		if (report.Failures.Count > 0)
 		{
-			try
-			{
-				McArmModel armModel = ArmSlimRadio.IsChecked == true ? McArmModel.Slim : McArmModel.Classic;
-				MinecraftSkin skin = entry.Builtin == null
-					? MinecraftSkin.Load(entry.FilePath!, armModel)
-					: McBuiltinSkins.Load(entry.Builtin, armModel);
-				RgbaImage atlas = MinecraftSkinConverter.Convert(skin, OverlayCheck.IsChecked == true, ElytraFillCheck.IsChecked == true);
-				string output = Path.Combine(m_outputDirectory, entry.OutputName + ".scskin");
-				MinecraftSkinConverter.SaveScSkin(atlas, output);
-				success++;
-			}
-			catch (Exception ex)
-			{
-				Trace.WriteLine($"[CharacterSkinsMC] 批量转换失败 文件={entry.DisplayName} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
-				failures.Add($"{entry.DisplayName}：{ex.Message}");
-			}
-		}
-		string message = $"批量转换完成 {success}/{entries.Count}，输出目录：{m_outputDirectory}";
-		if (failures.Count > 0)
-		{
-			message += "；失败：" + string.Join("；", failures.Take(6));
+			message += "；失败：" + string.Join("；", report.Failures.Take(6));
 		}
 		SetStatus(message);
 	}
 
 	private void OnOpenInputDirectoryClick(object? sender, RoutedEventArgs e)
 	{
-		if (!OperatingSystem.IsWindows())
+		if (!m_environment.CanOpenDirectory)
 		{
-			SetStatus($"当前平台不支持打开资源管理器，输入目录：{m_inputDirectory}");
+			SetStatus($"当前平台不支持打开资源管理器，输入目录：{m_workspace.InputDirectory}");
 			return;
 		}
 		try
 		{
-			Process.Start(new ProcessStartInfo("explorer.exe", m_inputDirectory) { UseShellExecute = true });
+			m_environment.OpenDirectory(m_workspace.InputDirectory);
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 打开目录失败 路径={m_inputDirectory} 类型={ex.GetType().FullName} 消息={ex.Message}");
-			SetStatus($"打开目录失败：{ex.Message}");
+			SetStatus(AppLog.Failure("打开目录失败", $"打开目录失败 路径={m_workspace.InputDirectory}", ex));
 		}
 	}
 
@@ -868,17 +753,15 @@ public partial class MainView : UserControl
 			string? path = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
 			if (string.IsNullOrEmpty(path))
 			{
-				SetStatus($"当前平台无法选择自定义目录，输出目录仍为：{m_outputDirectory}");
+				SetStatus($"当前平台无法选择自定义目录，输出目录仍为：{m_workspace.OutputDirectory}");
 				return;
 			}
-			m_outputDirectory = path!;
-			Directory.CreateDirectory(m_outputDirectory);
-			SetStatus($"输出目录已设为：{m_outputDirectory}");
+			m_workspace.SetOutputDirectory(path!);
+			SetStatus($"输出目录已设为：{m_workspace.OutputDirectory}");
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 选择输出目录失败 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
-			SetStatus($"选择输出目录失败：{ex.Message}");
+			SetStatus(AppLog.Failure("选择输出目录失败", "选择输出目录失败", ex));
 		}
 	}
 
@@ -912,8 +795,7 @@ public partial class MainView : UserControl
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 打开项目主页失败 地址={url} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
-			SetStatus($"打开项目地址失败：{ex.Message}");
+			SetStatus(AppLog.Failure("打开项目地址失败", $"打开项目主页失败 地址={url}", ex));
 		}
 	}
 

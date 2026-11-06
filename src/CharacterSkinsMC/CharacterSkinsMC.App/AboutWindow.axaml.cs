@@ -1,11 +1,11 @@
 #nullable enable
 using System;
 using System.Diagnostics;
-using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using CharacterSkinsMC.App.Infrastructure;
 
 namespace CharacterSkinsMC.App;
 
@@ -19,10 +19,9 @@ public partial class AboutWindow : Window
 	public AboutWindow(Window? owner)
 	{
 		InitializeComponent();
-		string version = GetVersion();
-		VersionText.Text = $"版本 {version}（按构建时间自动生成）";
+		VersionText.Text = $"版本 {AppVersion.Full}（按构建时间自动生成）";
 		// 标题显示大版本号（日期部分），如「关于 CharacterSkinsMC 26.11.06」。
-		Title = $"关于 CharacterSkinsMC {GetMajorVersion(version)}";
+		Title = $"关于 CharacterSkinsMC {AppVersion.Major}";
 		PlatformLinks.ItemsSource = new PlatformLink[]
 		{
 			new("CNB", "https://cnb.cool/SurvivalcraftTool/CharacterSkinsMC"),
@@ -38,17 +37,6 @@ public partial class AboutWindow : Window
 
 	/// <summary>代码托管平台条目：关于页按平台名 + 地址列出，点击整行打开。</summary>
 	private sealed record PlatformLink(string Platform, string Url);
-
-	/// <summary>读程序集 InformationalVersion；Directory.Build.props 在构建时写入 yy.MM.dd-HHmm。</summary>
-	public static string GetVersion()
-	{
-		Assembly assembly = typeof(AboutWindow).Assembly;
-		string? version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-		return string.IsNullOrWhiteSpace(version) ? "dev" : version!;
-	}
-
-	/// <summary>大版本号：取版本号「-」前的日期段，如 26.11.06。</summary>
-	public static string GetMajorVersion(string version) => version.Split('-')[0];
 
 	/// <summary>平台卡片整行可点，点击后用系统默认浏览器打开对应仓库地址。</summary>
 	private void OnPlatformLinkPressed(object? sender, PointerPressedEventArgs e)

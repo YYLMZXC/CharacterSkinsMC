@@ -126,15 +126,6 @@ public sealed class RgbaImage
 		n++;
 	}
 
-	public static RgbaImage FromFile(string path)
-	{
-		if (!File.Exists(path))
-		{
-			throw new FileNotFoundException("找不到皮肤文件。", path);
-		}
-		return FromMemory(File.ReadAllBytes(path));
-	}
-
 	/// <summary>解码任意常见格式（PNG/JPEG 等）的图像字节。System.Drawing 在 Android 上不可用，改用纯托管 stb 编解码。</summary>
 	public static RgbaImage FromMemory(byte[] bytes)
 	{
@@ -145,9 +136,25 @@ public sealed class RgbaImage
 		return image;
 	}
 
-	public void SavePng(string path)
+	/// <summary>逐像素比较两张图；供测试与对比工具共用，不依赖文件系统。</summary>
+	public bool ContentEquals(RgbaImage other)
 	{
-		File.WriteAllBytes(path, ToPngBytes());
+		ArgumentNullException.ThrowIfNull(other);
+		if (Width != other.Width || Height != other.Height)
+		{
+			return false;
+		}
+		for (int y = 0; y < Height; y++)
+		{
+			for (int x = 0; x < Width; x++)
+			{
+				if (GetPixel(x, y) != other.GetPixel(x, y))
+				{
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	public byte[] ToPngBytes()

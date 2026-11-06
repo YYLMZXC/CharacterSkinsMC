@@ -37,7 +37,7 @@ public enum McArmModel
 /// </summary>
 public sealed class MinecraftSkin
 {
-	public const int Size = 64;
+	public const int Size = SkinDimensions.AtlasSize;
 
 	private static readonly McBodyPart[] s_parts = Enum.GetValues<McBodyPart>();
 	private static readonly McFace[] s_faces = Enum.GetValues<McFace>();
@@ -63,16 +63,7 @@ public sealed class MinecraftSkin
 		ComposeOverlayIntoFacePositions();
 	}
 
-	public static MinecraftSkin Load(string path, McArmModel requestedArmModel)
-	{
-		if (!File.Exists(path))
-		{
-			throw new FileNotFoundException("找不到皮肤文件。", path);
-		}
-		return Load(File.ReadAllBytes(path), requestedArmModel);
-	}
-
-	/// <summary>从 PNG 字节加载（供内嵌皮肤等无文件路径来源使用）。</summary>
+	/// <summary>从 PNG 字节加载；文件读取由调用方的基础设施层负责。</summary>
 	public static MinecraftSkin Load(byte[] png, McArmModel requestedArmModel)
 	{
 		RgbaImage source = RgbaImage.FromMemory(png);

@@ -33,7 +33,7 @@ public sealed record ScRegion(
 /// </summary>
 public static class ScSkinAtlas
 {
-	public const int Size = 64;
+	public const int Size = SkinDimensions.AtlasSize;
 
 	private static ScRegion P(string name, int x, int y, int w, int h, McBodyPart part, McFace face,
 		double u0 = 0.0, double u1 = 1.0, bool mirrorX = false, bool symmetricX = false)

@@ -15,7 +15,7 @@ public readonly record struct ScAtlasDiff(int TotalPixels, int DifferentPixels, 
 /// </summary>
 public static class ScAtlasComparison
 {
-	public const int AtlasSize = ScSkinAtlas.Size;
+	public const int AtlasSize = SkinDimensions.AtlasSize;
 
 	public static ScAtlasDiff Compare(RgbaImage current, RgbaImage reference)
 	{

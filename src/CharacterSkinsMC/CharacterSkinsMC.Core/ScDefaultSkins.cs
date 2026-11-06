@@ -65,11 +65,4 @@ public static class ScDefaultSkins
 	/// <summary>读取对应性别的人物 DAE 模型，已应用场景节点变换。</summary>
 	public static ScModel LoadModel(ScPlayerClass playerClass) => ScModel.Load(
 		EmbeddedAssets.Read(playerClass == ScPlayerClass.Male ? "HumanMale.dae" : "HumanFemale.dae"));
-
-	/// <summary>把内置皮肤导出成可直接放进游戏皮肤目录的 .scskin 文件。</summary>
-	public static string SaveSkin(ScDefaultSkin skin, string outputPath)
-	{
-		ArgumentNullException.ThrowIfNull(skin);
-		return MinecraftSkinConverter.SaveScSkin(LoadSkin(skin), outputPath);
-	}
 }
