@@ -19,7 +19,7 @@ public static class MinecraftSkinConverter
 		ArgumentNullException.ThrowIfNull(skin);
 		RgbaImage source = composeOverlay ? skin.Composed : skin.Base;
 		var atlas = new RgbaImage(AtlasSize, AtlasSize);
-		foreach (ScRegion region in ScSkinAtlas.Regions)
+		foreach (ScRegion region in ScSkinAtlas.GetRegions(skin.ArmModel))
 		{
 			Rect faceRect = skin.GetFaceRect(region.Part, region.Face);
 			for (int dy = 0; dy < region.Dest.H; dy++)

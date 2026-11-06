@@ -9,6 +9,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using CheckBox = Avalonia.Controls.CheckBox;
+using RadioButton = Avalonia.Controls.RadioButton;
 using ScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
@@ -100,9 +101,19 @@ public partial class MainView : UserControl
 				UpdateSpeedLabel(e.NewValue);
 			}
 		};
-		SlimCheck.PropertyChanged += (_, e) =>
+		// 宽手（Steve）/ 细手（Alex）单选：先设默认选中态再订阅事件，避免构造期间触发刷新。
+		// Avalonia 12 的 RadioButton 没有 Checked 事件，须通过 PropertyChanged 监听 IsCheckedProperty。
+		ArmClassicRadio.IsChecked = true;
+		ArmClassicRadio.PropertyChanged += (_, e) =>
 		{
-			if (e.Property == CheckBox.IsCheckedProperty)
+			if (e.Property == RadioButton.IsCheckedProperty)
+			{
+				OpenSelected();
+			}
+		};
+		ArmSlimRadio.PropertyChanged += (_, e) =>
+		{
+			if (e.Property == RadioButton.IsCheckedProperty)
 			{
 				OpenSelected();
 			}
@@ -378,7 +389,7 @@ public partial class MainView : UserControl
 		}
 		try
 		{
-			McArmModel armModel = SlimCheck.IsChecked == true ? McArmModel.Slim : McArmModel.Classic;
+			McArmModel armModel = ArmSlimRadio.IsChecked == true ? McArmModel.Slim : McArmModel.Classic;
 			m_skin = entry.Builtin == null
 				? MinecraftSkin.Load(entry.FilePath!, armModel)
 				: McBuiltinSkins.Load(entry.Builtin, armModel);
@@ -386,7 +397,7 @@ public partial class MainView : UserControl
 			// 选中转换皮肤后，SC 3D 预览回到「当前转换结果」；选中内置皮肤时另由 OnDefaultSkinSelected 覆盖。
 			m_selectedDefaultAtlas = null;
 			UpdatePreviews();
-			SetStatus($"{entry.DisplayName} | {m_skin.SourceDescription} | 手臂={(m_skin.ArmModel == McArmModel.Slim ? "Slim" : "Classic")} | 第二层={(m_skin.HasOverlay && OverlayCheck.IsChecked == true ? "已合成" : "未合成")} | 输出={m_outputDirectory}");
+			SetStatus($"{entry.DisplayName} | {m_skin.SourceDescription} | 手臂={(m_skin.ArmModel == McArmModel.Slim ? "细手（Alex）" : "宽手（Steve）")} | 第二层={(m_skin.HasOverlay && OverlayCheck.IsChecked == true ? "已合成" : "未合成")} | 输出={m_outputDirectory}");
 		}
 		catch (Exception ex)
 		{
@@ -703,7 +714,7 @@ public partial class MainView : UserControl
 		{
 			try
 			{
-				McArmModel armModel = SlimCheck.IsChecked == true ? McArmModel.Slim : McArmModel.Classic;
+				McArmModel armModel = ArmSlimRadio.IsChecked == true ? McArmModel.Slim : McArmModel.Classic;
 				MinecraftSkin skin = entry.Builtin == null
 					? MinecraftSkin.Load(entry.FilePath!, armModel)
 					: McBuiltinSkins.Load(entry.Builtin, armModel);

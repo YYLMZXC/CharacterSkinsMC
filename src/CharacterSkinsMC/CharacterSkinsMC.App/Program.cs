@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Avalonia;
 using CharacterSkinsMC.Core;
@@ -209,12 +210,14 @@ internal static class Program
 			string scskinPath = MinecraftSkinConverter.SaveScSkin(atlas, Path.Combine(directory, "skin.scskin"));
 			RgbaImage reloaded = RgbaImage.FromFile(scskinPath);
 
-			// 覆盖旧版镜像补齐、高清降采样与 Slim 三条归一化分支。
-			foreach ((int width, int height, McArmModel arm) in new (int, int, McArmModel)[]
+			// 覆盖旧版镜像补齐、各分辨率降采样（2/4/8 倍）与宽手/细手两条规则分支。
+			foreach ((int width, int height, McArmModel arm, int expectedScale) in new (int, int, McArmModel, int)[]
 			{
-				(64, 32, McArmModel.Classic),
-				(64, 64, McArmModel.Slim),
-				(128, 128, McArmModel.Classic)
+				(64, 32, McArmModel.Classic, 1),
+				(64, 64, McArmModel.Slim, 1),
+				(128, 128, McArmModel.Classic, 2),
+				(256, 256, McArmModel.Slim, 4),
+				(512, 512, McArmModel.Classic, 8)
 			})
 			{
 				var variant = new RgbaImage(width, height);
@@ -228,11 +231,28 @@ internal static class Program
 				string variantPath = Path.Combine(directory, $"skin-{width}x{height}.png");
 				variant.SavePng(variantPath);
 				MinecraftSkin variantSkin = MinecraftSkin.Load(variantPath, arm);
+				if (variantSkin.SourceScale != expectedScale)
+				{
+					throw new InvalidOperationException($"{width}×{height} 皮肤分辨率倍数应为 {expectedScale}。");
+				}
+				if (width == 64 && height == 32 && variantSkin.ArmModel != McArmModel.Classic)
+				{
+					throw new InvalidOperationException("64×32 旧版皮肤没有细手模型，必须固定为宽手。");
+				}
 				RgbaImage variantAtlas = MinecraftSkinConverter.Convert(variantSkin, composeOverlay: true);
 				if (variantAtlas.Width != 64 || variantAtlas.Height != 64)
 				{
 					throw new InvalidOperationException($"{width}×{height} 归一化后图集尺寸异常。");
 				}
+			}
+
+			// 宽手 / 细手必须是两套独立的规则表：条目数一致，但手臂条目名称不同。
+			IReadOnlyList<ScRegion> classicRegions = ScSkinAtlas.GetRegions(McArmModel.Classic);
+			IReadOnlyList<ScRegion> slimRegions = ScSkinAtlas.GetRegions(McArmModel.Slim);
+			if (classicRegions.Count != slimRegions.Count ||
+				classicRegions.Zip(slimRegions, (a, b) => a.Name == b.Name).All(same => same))
+			{
+				throw new InvalidOperationException("宽手与细手的转译规则表必须分开维护，手臂条目应有区分。");
 			}
 
 			int opaquePixels = 0;

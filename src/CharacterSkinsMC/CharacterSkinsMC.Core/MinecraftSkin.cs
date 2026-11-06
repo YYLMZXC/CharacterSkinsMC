@@ -47,13 +47,16 @@ public sealed class MinecraftSkin
 	public RgbaImage OverlayLayer { get; }
 	public bool HasOverlay { get; }
 	public McArmModel ArmModel { get; }
+	/// <summary>源皮肤相对 64×64 基准的分辨率倍数：1=16x、2=32x、4=64x、8=128x。</summary>
+	public int SourceScale { get; }
 	public string SourceDescription { get; }
 
-	private MinecraftSkin(RgbaImage normalized, bool hasOverlay, McArmModel armModel, string description)
+	private MinecraftSkin(RgbaImage normalized, bool hasOverlay, McArmModel armModel, string description, int sourceScale)
 	{
 		Base = normalized;
 		HasOverlay = hasOverlay;
 		ArmModel = armModel;
+		SourceScale = sourceScale;
 		SourceDescription = description;
 		Composed = normalized.Clone();
 		OverlayLayer = new RgbaImage(Size, Size);
@@ -78,18 +81,21 @@ public sealed class MinecraftSkin
 
 		if (width == 64 && height == 32)
 		{
-			// 64×32 旧版皮肤只有右侧四肢，左臂/左腿按官方规则水平镜像补齐；旧版没有第二层。
-			return new MinecraftSkin(NormalizeLegacy(source), false, McArmModel.Classic, "64×32 旧版皮肤（已镜像补齐左侧四肢）");
+			// 64×32 旧版皮肤只有右侧四肢，左臂/左腿按官方规则水平镜像补齐；旧版没有第二层，也没有细手模型，固定宽手。
+			return new MinecraftSkin(NormalizeLegacy(source), false, McArmModel.Classic, "64×32 旧版皮肤（已镜像补齐左侧四肢）", 1);
 		}
 		if (width == 64 && height == 64)
 		{
-			return new MinecraftSkin(source, true, requestedArmModel, "64×64 双层皮肤");
+			return new MinecraftSkin(source, true, requestedArmModel, "64×64 皮肤（16x）", 1);
 		}
-		if (width == 128 && height == 128)
+		if (width == height && width is 128 or 256 or 512)
 		{
-			return new MinecraftSkin(DownsampleHd(source), true, requestedArmModel, "128×128 高清皮肤（已按 2 倍降采样）");
+			// 32x / 64x / 128x 高清皮肤：按各自倍数降采样回 64×64，规则见 DownsampleHd。
+			int scale = width / 64;
+			return new MinecraftSkin(DownsampleHd(source, scale), true, requestedArmModel,
+				$"{width}×{height} 高清皮肤（{scale * 16}x，已按 {scale} 倍降采样）", scale);
 		}
-		throw new InvalidDataException($"不支持的皮肤尺寸 {width}×{height}；仅支持 64×32、64×64 与 128×128。");
+		throw new InvalidDataException($"不支持的皮肤尺寸 {width}×{height}；仅支持 64×32、64×64、128×128、256×256 与 512×512。");
 	}
 
 	/// <summary>取得指定部位、指定面的源矩形；overlay 为 true 时返回第二层对应区域。</summary>
@@ -209,14 +215,48 @@ public sealed class MinecraftSkin
 		}
 	}
 
-	private static RgbaImage DownsampleHd(RgbaImage source)
+	/// <summary>
+	/// 高清降采样，按源分辨率分级：
+	/// 32x（2 倍）取每个 2×2 块的中心像素，保留像素画锐利边缘；
+	/// 64x / 128x（4、8 倍）改用 alpha 加权的区域平均（premultiply），避免高频细节缩成噪点。
+	/// </summary>
+	private static RgbaImage DownsampleHd(RgbaImage source, int scale)
 	{
 		var result = new RgbaImage(Size, Size);
+		if (scale == 2)
+		{
+			for (int y = 0; y < Size; y++)
+			{
+				for (int x = 0; x < Size; x++)
+				{
+					result.SetPixel(x, y, source.GetPixel(x * 2 + 1, y * 2 + 1));
+				}
+			}
+			return result;
+		}
 		for (int y = 0; y < Size; y++)
 		{
 			for (int x = 0; x < Size; x++)
 			{
-				result.SetPixel(x, y, source.GetPixel(x * 2, y * 2));
+				int rSum = 0, gSum = 0, bSum = 0, aSum = 0;
+				for (int dy = 0; dy < scale; dy++)
+				{
+					for (int dx = 0; dx < scale; dx++)
+					{
+						RgbaColor c = source.GetPixel(x * scale + dx, y * scale + dy);
+						rSum += c.R * c.A;
+						gSum += c.G * c.A;
+						bSum += c.B * c.A;
+						aSum += c.A;
+					}
+				}
+				int block = scale * scale;
+				byte a = (byte)((aSum + block / 2) / block);
+				// RGB 按 alpha 预乘平均，防止透明黑边污染缩小后的颜色。
+				byte r = aSum == 0 ? (byte)0 : (byte)((rSum + aSum / 2) / aSum);
+				byte g = aSum == 0 ? (byte)0 : (byte)((gSum + aSum / 2) / aSum);
+				byte b = aSum == 0 ? (byte)0 : (byte)((bSum + aSum / 2) / aSum);
+				result.SetPixel(x, y, new RgbaColor(r, g, b, a));
 			}
 		}
 		return result;

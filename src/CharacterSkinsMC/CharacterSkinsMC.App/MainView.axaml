@@ -14,7 +14,7 @@
 					<StackPanel Spacing="8">
 						<TextBlock x:Name="AboutVersionText" FontSize="14" Foreground="#FF505864" TextWrapping="Wrap" />
 						<TextBlock TextWrapping="Wrap" Margin="0,8,0,0"
-						           Text="Minecraft 皮肤 → Survivalcraft（生存战争）皮肤转换工具。&#x0a;&#x0a;· 读取 64×64 Minecraft 皮肤（Classic / Slim 手臂，含第二层）&#x0a;· 转换为 Survivalcraft .scskin 图集，可直接放入游戏输入目录&#x0a;· 提供单张预览（MC 皮肤 / SC 图集 / 3D 模型）与批量转换" />
+						           Text="Minecraft 皮肤 → Survivalcraft（生存战争）皮肤转换工具。&#x0a;&#x0a;· 支持 16x / 32x / 64x / 128x 分辨率（64×32、64×64、128×128、256×256、512×512）&#x0a;· 宽手（Steve）与细手（Alex）手臂模型分开转译&#x0a;· 读取双层皮肤并合成第二层，输出 Survivalcraft .scskin 图集&#x0a;· 提供单张预览（MC 皮肤 / SC 图集 / 3D 模型）与批量转换" />
 						<TextBlock TextWrapping="Wrap" Foreground="#FF9098A4"
 						           Text="版本号按构建时间自动生成，格式为 年.月.日-时分（如 26.11.06-1421）。" />
 					</StackPanel>
@@ -55,7 +55,12 @@
 						<ListBox x:Name="FilesList" Grid.Row="1" Margin="6,0" MinHeight="140" SelectionChanged="OnFileSelected" />
 						<StackPanel Grid.Row="2" Margin="6,4">
 							<TextBlock Text="转换选项" FontWeight="Bold" Margin="0,0,0,4" />
-							<CheckBox x:Name="SlimCheck" Content="Slim 手臂（3px）" />
+							<StackPanel Orientation="Horizontal" Spacing="6">
+								<TextBlock Text="手臂模型" VerticalAlignment="Center" />
+								<!-- 宽手 Steve / 细手 Alex 分开两个单选项；XAML 不设 IsChecked，选中态由代码在订阅事件后设置。 -->
+								<RadioButton x:Name="ArmClassicRadio" Content="宽手（Steve）" GroupName="ArmModel" />
+								<RadioButton x:Name="ArmSlimRadio" Content="细手（Alex）" GroupName="ArmModel" />
+							</StackPanel>
 							<CheckBox x:Name="OverlayCheck" Content="合成第二层（帽子/外套）" IsChecked="True" />
 							<CheckBox x:Name="GuidesCheck" Content="显示 UV 分区" IsChecked="True" />
 							<CheckBox x:Name="AutoRotateCheck" Content="自动旋转 3D 预览" />
