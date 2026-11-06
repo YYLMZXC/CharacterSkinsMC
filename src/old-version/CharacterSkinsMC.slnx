@@ -1,0 +1,5 @@
+<Solution>
+  <!-- 独立工具仓库的解决方案：不并入主仓 SCNETWORK.slnx，两个工程共用本目录的属性层。 -->
+  <Project Path="CharacterSkinsMC.Core/CharacterSkinsMC.Core.csproj" />
+  <Project Path="CharacterSkinsMC.App/CharacterSkinsMC.App.csproj" />
+</Solution>

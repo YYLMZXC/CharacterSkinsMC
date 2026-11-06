@@ -1,0 +1,14 @@
+<Project>
+	<!-- 本目录是独立的皮肤转换工具仓库，两个工程不参与主仓 SCNETWORK.slnx。
+	     原先工程里的 $(WindowsTargetFramework) 取自主仓根属性层；独立检出时该属性为空，
+	     构建以 NETSDK1241（目标框架为空）中止。故以就近属性层自定身份并切断继承：
+	     MSBuild 向上查找 Directory.Build.props 只命中最深一份，主仓根那份不再生效；
+	     ImportDirectoryBuildTargets=false 再切断主仓根的打包、图集与构建契约目标，
+	     使工具在「放在主仓 tools 下」与「独立检出」两种布局下取到同一套属性。 -->
+	<PropertyGroup>
+		<!-- 与主仓根 Directory.Build.props 的 GlobalTargetFramework 同口径；改基版本时两处同步。 -->
+		<GlobalTargetFramework>net11.0</GlobalTargetFramework>
+		<WindowsTargetFramework>$(GlobalTargetFramework)-windows</WindowsTargetFramework>
+		<ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
+	</PropertyGroup>
+</Project>
