@@ -22,14 +22,19 @@ public static class ScModelPreview
 	}
 
 	public static RgbaImage Render(RgbaImage atlas, ScPlayerClass playerClass,
-		int width, int height, double yawDegrees, double pitchDegrees) =>
-		Render(atlas, ScDefaultSkins.LoadModel(playerClass), width, height, yawDegrees, pitchDegrees);
+		int width, int height, double yawDegrees, double pitchDegrees, bool fillTransparentAsBlack = false) =>
+		Render(atlas, ScDefaultSkins.LoadModel(playerClass), width, height, yawDegrees, pitchDegrees, fillTransparentAsBlack);
 
 	public static RgbaImage Render(RgbaImage atlas, ScModel model,
-		int width, int height, double yawDegrees, double pitchDegrees)
+		int width, int height, double yawDegrees, double pitchDegrees, bool fillTransparentAsBlack = false)
 	{
 		ArgumentNullException.ThrowIfNull(atlas);
 		ArgumentNullException.ThrowIfNull(model);
+		if (fillTransparentAsBlack)
+		{
+			// 图集透明区域填成不透明黑色，避免人物表面出现镂空，观感更实。
+			atlas = atlas.FillTransparentAs(new RgbaColor(0, 0, 0, 255));
+		}
 		width = Math.Max(160, width);
 		height = Math.Max(200, height);
 		var result = new RgbaImage(width, height);

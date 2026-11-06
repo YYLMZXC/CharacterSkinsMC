@@ -57,7 +57,8 @@ public static class SkinPreview
 	}
 
 	/// <summary>用正交投影把 Minecraft 皮肤六个盒面贴到立方体上，支持旋转与双层外壳预览。</summary>
-	public static RgbaImage Render3D(MinecraftSkin skin, bool composeOverlay, int width, int height, double yawDegrees, double pitchDegrees)
+	public static RgbaImage Render3D(MinecraftSkin skin, bool composeOverlay, int width, int height, double yawDegrees, double pitchDegrees,
+		bool fillTransparentAsBlack = false)
 	{
 		ArgumentNullException.ThrowIfNull(skin);
 		width = Math.Max(160, width);
@@ -76,7 +77,11 @@ public static class SkinPreview
 		double cosPitch = Math.Cos(pitch), sinPitch = Math.Sin(pitch);
 
 		Cube[] cubes = BuildCubes(skin.ArmModel);
-		DrawPass(result, skin.Base, cubes, 1.0, cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY, skin);
+		// 只填充基础层：第二层外壳的透明像素本意是露出下层，填黑会破坏叠加效果。
+		RgbaImage baseTexture = fillTransparentAsBlack
+			? skin.Base.FillTransparentAs(new RgbaColor(0, 0, 0, 255))
+			: skin.Base;
+		DrawPass(result, baseTexture, cubes, 1.0, cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY, skin);
 		if (composeOverlay && skin.HasOverlay)
 		{
 			DrawPass(result, skin.OverlayLayer, cubes, 1.06, cosYaw, sinYaw, cosPitch, sinPitch, scale, centerX, centerY, skin);

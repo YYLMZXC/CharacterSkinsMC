@@ -136,6 +136,15 @@ public partial class MainView : UserControl
 				OpenSelected();
 			}
 		};
+		// 透明填充只影响两条 3D 预览通道，切换后原地重绘即可。
+		FillTransparentCheck.PropertyChanged += (_, e) =>
+		{
+			if (e.Property == CheckBox.IsCheckedProperty && m_uiReady)
+			{
+				RenderModel();
+				RenderScModel();
+			}
+		};
 		GuidesCheck.PropertyChanged += (_, e) =>
 		{
 			if (e.Property == CheckBox.IsCheckedProperty)
@@ -538,7 +547,8 @@ public partial class MainView : UserControl
 		{
 			return;
 		}
-		SetImage(ModelPreviewImage, SkinPreview.Render3D(m_skin, OverlayCheck.IsChecked == true, 460, 540, m_yawDegrees, m_pitchDegrees));
+		SetImage(ModelPreviewImage, SkinPreview.Render3D(m_skin, OverlayCheck.IsChecked == true, 460, 540, m_yawDegrees, m_pitchDegrees,
+			FillTransparentCheck.IsChecked == true));
 	}
 
 	private void OnCompareSkinChanged(object? sender, SelectionChangedEventArgs e)
@@ -686,7 +696,8 @@ public partial class MainView : UserControl
 		try
 		{
 			ScModel model = GetModel(CurrentPlayerClass);
-			SetImage(ScModelPreviewImage, ScModelPreview.Render(atlas, model, 460, 540, m_yawDegrees, m_pitchDegrees));
+			SetImage(ScModelPreviewImage, ScModelPreview.Render(atlas, model, 460, 540, m_yawDegrees, m_pitchDegrees,
+				FillTransparentCheck.IsChecked == true));
 		}
 		catch (Exception ex)
 		{

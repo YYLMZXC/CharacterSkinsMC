@@ -54,6 +54,21 @@ public sealed class RgbaImage
 		return copy;
 	}
 
+	/// <summary>返回一张新图：alpha 低于阈值的像素替换为指定填充色（不透明），其余像素原样复制。</summary>
+	public RgbaImage FillTransparentAs(RgbaColor fill, byte alphaThreshold = 128)
+	{
+		var result = new RgbaImage(Width, Height);
+		for (int y = 0; y < Height; y++)
+		{
+			for (int x = 0; x < Width; x++)
+			{
+				RgbaColor pixel = GetPixel(x, y);
+				result.SetPixel(x, y, pixel.A < alphaThreshold ? fill : pixel);
+			}
+		}
+		return result;
+	}
+
 	public static RgbaImage FromFile(string path)
 	{
 		if (!File.Exists(path))
