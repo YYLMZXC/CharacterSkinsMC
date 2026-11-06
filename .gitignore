@@ -1,0 +1,25 @@
+# 本目录是独立的工具仓库，不继承主仓根的 .gitignore，故此处自成一份忽略规则。
+# 构建产物曾被自动提交工具入库；已跟踪文件需先以 git rm --cached 退订索引，
+# 本文件的规则才对它们生效。.run/ 是共享运行配置，不在忽略范围内。
+
+# 构建产物（任意工程层级）
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+publish/
+*.binlog
+
+# IDE 与编辑器的本机状态
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# 本机临时文件与备份
+*.bak
+*.log
+*.tmp
+Thumbs.db
+.DS_Store
