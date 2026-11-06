@@ -39,7 +39,6 @@ public partial class MainView : UserControl
 	private const double MaxRotationSpeed = 180.0;
 	private const double CompactLayoutThreshold = 800.0;
 	private const double SidePanelWidth = 320.0;
-	private const double SidePanelCompactHeight = 320.0;
 
 	private ScPlayerClass CurrentPlayerClass =>
 		PlayerClassCombo.SelectedIndex == 1 ? ScPlayerClass.Female : ScPlayerClass.Male;
@@ -152,7 +151,8 @@ public partial class MainView : UserControl
 		{
 			BodyGrid.ColumnDefinitions[0].Width = new GridLength(0);
 			BodyGrid.ColumnDefinitions[1].Width = GridLength.Star;
-			BodyGrid.RowDefinitions[0].Height = new GridLength(SidePanelCompactHeight);
+			// 侧栏按自身内容取高度（文件列表有 MinHeight 保底），剩余空间全部留给标签页。
+			BodyGrid.RowDefinitions[0].Height = GridLength.Auto;
 			BodyGrid.RowDefinitions[1].Height = GridLength.Star;
 			Grid.SetColumnSpan(SidePanel, 2);
 			Grid.SetRow(SidePanel, 0);

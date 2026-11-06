@@ -22,7 +22,7 @@
 			<Grid x:Name="SidePanel" Grid.Row="0" Grid.Column="0" RowDefinitions="Auto,*,Auto">
 				<TextBlock Margin="6,4" TextWrapping="Wrap" Foreground="#FF505864"
 				           Text="输入目录：CharacterSkinsMC（自动创建）&#x0a;也可把 PNG 直接拖入下方列表" />
-				<ListBox x:Name="FilesList" Grid.Row="1" Margin="6,0" SelectionChanged="OnFileSelected" />
+				<ListBox x:Name="FilesList" Grid.Row="1" Margin="6,0" MinHeight="140" SelectionChanged="OnFileSelected" />
 				<StackPanel Grid.Row="2" Margin="6,4">
 					<TextBlock Text="转换选项" FontWeight="Bold" Margin="0,0,0,4" />
 					<CheckBox x:Name="SlimCheck" Content="Slim 手臂（3px）" />
