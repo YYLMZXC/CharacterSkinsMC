@@ -1,0 +1,9 @@
+{
+  "RemoteUrls": [
+    "D:\\sc\\cnb\\sc\\ScNetworkDEV\\tools\\CharacterSkinsMC"
+  ],
+  "CheckAddAll": true,
+  "CheckPushTags": false,
+  "CheckForceCommit": false,
+  "CheckForcePush": false
+}

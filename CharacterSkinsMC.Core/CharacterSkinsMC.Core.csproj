@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<!-- 目标框架沿用仓根唯一取值点的 Windows 变体；本工具只面向 Windows 桌面。 -->
+		<TargetFramework>$(WindowsTargetFramework)</TargetFramework>
+		<UseWindowsForms>true</UseWindowsForms>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<LangVersion>preview</LangVersion>
+		<AssemblyName>CharacterSkinsMC.Core</AssemblyName>
+		<RootNamespace>CharacterSkinsMC.Core</RootNamespace>
+		<IsPackable>false</IsPackable>
+		<InvariantGlobalization>false</InvariantGlobalization>
+	</PropertyGroup>
+</Project>
