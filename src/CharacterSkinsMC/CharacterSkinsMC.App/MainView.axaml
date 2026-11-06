@@ -24,8 +24,8 @@
 					<CheckBox x:Name="AutoRotateCheck" Content="自动旋转 3D 预览" />
 					<StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="6">
 						<TextBlock Text="SC 模型性别" VerticalAlignment="Center" />
-						<ComboBox x:Name="PlayerClassCombo" Width="120" SelectedIndex="0"
-						          SelectionChanged="OnPlayerClassChanged">
+						<!-- 选中项与事件都在 InitializeComponent 完成后由代码设置，避免 XAML EndInit 阶段事件早触发。 -->
+						<ComboBox x:Name="PlayerClassCombo" Width="120">
 							<ComboBoxItem Content="男" />
 							<ComboBoxItem Content="女" />
 						</ComboBox>

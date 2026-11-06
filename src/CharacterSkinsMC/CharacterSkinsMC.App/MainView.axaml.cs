@@ -27,6 +27,7 @@ public partial class MainView : UserControl
 	private RgbaImage? m_selectedDefaultAtlas;
 	private double m_yawDegrees = 35;
 	private bool m_suppressYawEvent;
+	private bool m_uiReady;
 	private readonly Dictionary<ScPlayerClass, ScModel> m_models = new();
 	private readonly DispatcherTimer m_timer;
 
@@ -71,7 +72,10 @@ public partial class MainView : UserControl
 			}
 		};
 		this.DetachedFromVisualTree += (_, _) => m_timer.Stop();
-		LoadDefaultSkins();
+		PlayerClassCombo.SelectionChanged += OnPlayerClassChanged;
+		// 所有 XAML 命名控件都已填充，才允许事件处理器访问列表与预览控件。
+		m_uiReady = true;
+		PlayerClassCombo.SelectedIndex = 0;
 		Rescan();
 	}
 
@@ -269,6 +273,10 @@ public partial class MainView : UserControl
 	/// <summary>按当前性别填充内置默认皮肤列表，选中第一张。</summary>
 	private void LoadDefaultSkins()
 	{
+		if (!m_uiReady)
+		{
+			return;
+		}
 		DefaultSkinList.Items.Clear();
 		foreach (ScDefaultSkin skin in ScDefaultSkins.GetByClass(CurrentPlayerClass))
 		{
@@ -282,6 +290,10 @@ public partial class MainView : UserControl
 
 	private void OnPlayerClassChanged(object? sender, SelectionChangedEventArgs e)
 	{
+		if (!m_uiReady)
+		{
+			return;
+		}
 		LoadDefaultSkins();
 		RenderScModel();
 	}
@@ -297,6 +309,10 @@ public partial class MainView : UserControl
 
 	private void OnDefaultSkinSelected(object? sender, SelectionChangedEventArgs e)
 	{
+		if (!m_uiReady)
+		{
+			return;
+		}
 		ScDefaultSkin? skin = CurrentDefaultSkin();
 		if (skin == null)
 		{
