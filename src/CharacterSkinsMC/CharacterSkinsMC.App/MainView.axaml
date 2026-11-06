@@ -142,7 +142,7 @@
 						<TabItem Header="MC 3D 预览">
 							<DockPanel>
 								<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
-								           Text="Minecraft 立方体人物模型，含第二层外壳；只用于查看输入皮肤，与右侧 SC 3D 预览相互独立。" />
+								           Text="Minecraft 立方体人物模型，含第二层外壳；只用于查看输入皮肤，与右侧 SC 3D 预览相互独立。按住模型拖动可 360° 旋转（上下拖动改变俯仰）。" />
 								<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
 									<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
 									         HorizontalAlignment="Left" VerticalAlignment="Top">
@@ -154,7 +154,7 @@
 						<TabItem Header="SC 3D 预览">
 							<DockPanel>
 								<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
-								           Text="Survivalcraft 专属预览：使用真实 HumanMale / HumanFemale.dae 三角形与皮肤图集 UV 渲染，按左侧性别切换模型。" />
+								           Text="Survivalcraft 专属预览：使用真实 HumanMale / HumanFemale.dae 三角形与皮肤图集 UV 渲染，按左侧性别切换模型。按住模型拖动可 360° 旋转（上下拖动改变俯仰）。" />
 								<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
 									<Viewbox Stretch="Uniform" StretchDirection="DownOnly"
 									         HorizontalAlignment="Left" VerticalAlignment="Top">

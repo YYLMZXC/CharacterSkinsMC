@@ -30,15 +30,24 @@ public partial class MainView : UserControl
 	private RgbaImage? m_referenceAtlas;
 	private ScDefaultSkin? m_referenceSkin;
 	private double m_yawDegrees = 35;
+	private double m_pitchDegrees = 18;
 	private bool m_suppressYawEvent;
 	private bool m_uiReady;
 	private bool m_compactLayout;
+	// 3D 预览拖拽旋转状态：按住预览图拖动即旋转（yaw 全向 360°，pitch 上下限位）。
+	private bool m_isDragging;
+	private Point m_dragLastPoint;
 	private readonly Dictionary<ScPlayerClass, ScModel> m_models = new();
 	private readonly DispatcherTimer m_timer;
 	private readonly Stopwatch m_rotationClock = Stopwatch.StartNew();
 
 	private const double MinRotationSpeed = 5.0;
 	private const double MaxRotationSpeed = 180.0;
+	private const double MinPitchDegrees = -80.0;
+	private const double MaxPitchDegrees = 80.0;
+	// 拖拽灵敏度：每像素位移对应的旋转角度。
+	private const double DragYawDegreesPerPixel = 0.5;
+	private const double DragPitchDegreesPerPixel = 0.4;
 	private const double CompactLayoutThreshold = 800.0;
 	private const double SidePanelWidth = 320.0;
 
@@ -93,6 +102,8 @@ public partial class MainView : UserControl
 		}
 		FilesList.AddHandler(DragDrop.DragOverEvent, OnListDragOver);
 		FilesList.AddHandler(DragDrop.DropEvent, OnListDrop);
+		HookPreviewDragRotate(ModelPreviewImage);
+		HookPreviewDragRotate(ScModelPreviewImage);
 		YawSlider.ValueChanged += (_, e) => OnYawSliderChanged(e.NewValue);
 		SpeedSlider.ValueChanged += (_, e) =>
 		{
@@ -244,7 +255,7 @@ public partial class MainView : UserControl
 		// 卡顿或系统休眠造成的超长间隔不补帧，避免恢复时视角突跳。
 		double elapsedSeconds = Math.Clamp(m_rotationClock.Elapsed.TotalSeconds, 0.0, 0.5);
 		m_rotationClock.Restart();
-		if (AutoRotateCheck.IsChecked != true || (m_skin == null && m_selectedDefaultAtlas == null))
+		if (m_isDragging || AutoRotateCheck.IsChecked != true || (m_skin == null && m_selectedDefaultAtlas == null))
 		{
 			return;
 		}
@@ -273,6 +284,72 @@ public partial class MainView : UserControl
 			return;
 		}
 		m_yawDegrees = value;
+		if (m_skin != null)
+		{
+			RenderModel();
+		}
+		RenderScModel();
+	}
+
+	/// <summary>为 3D 预览图挂接拖拽旋转（Pointer 捕获，鼠标与触屏通用）。</summary>
+	private void HookPreviewDragRotate(Image previewImage)
+	{
+		previewImage.Cursor = new Avalonia.Input.Cursor(StandardCursorType.SizeAll);
+		previewImage.PointerPressed += OnPreviewPointerPressed;
+		previewImage.PointerMoved += OnPreviewPointerMoved;
+		previewImage.PointerReleased += OnPreviewPointerReleased;
+		previewImage.PointerCaptureLost += OnPreviewPointerCaptureLost;
+	}
+
+	private void OnPreviewPointerPressed(object? sender, PointerPressedEventArgs e)
+	{
+		PointerPoint point = e.GetCurrentPoint((Visual)sender!);
+		if (!point.Properties.IsLeftButtonPressed)
+		{
+			return;
+		}
+		m_isDragging = true;
+		m_dragLastPoint = point.Position;
+		e.Pointer.Capture((IInputElement)sender!);
+	}
+
+	private void OnPreviewPointerMoved(object? sender, PointerEventArgs e)
+	{
+		if (!m_isDragging)
+		{
+			return;
+		}
+		Point position = e.GetPosition((Visual)sender!);
+		double deltaX = position.X - m_dragLastPoint.X;
+		double deltaY = position.Y - m_dragLastPoint.Y;
+		m_dragLastPoint = position;
+		// 横向拖动旋转 yaw（360° 全向），纵向拖动调整俯仰并限位防止模型翻转过头。
+		RotatePreview(deltaX * DragYawDegreesPerPixel, -deltaY * DragPitchDegreesPerPixel);
+	}
+
+	private void OnPreviewPointerReleased(object? sender, PointerReleasedEventArgs e)
+	{
+		m_isDragging = false;
+		e.Pointer.Capture(null);
+	}
+
+	private void OnPreviewPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+	{
+		m_isDragging = false;
+	}
+
+	/// <summary>按拖拽增量更新视角并同步 yaw 滑块，随后重绘两路 3D 预览。</summary>
+	private void RotatePreview(double yawDelta, double pitchDelta)
+	{
+		m_yawDegrees = (m_yawDegrees + yawDelta) % 360.0;
+		if (m_yawDegrees < 0)
+		{
+			m_yawDegrees += 360.0;
+		}
+		m_pitchDegrees = Math.Clamp(m_pitchDegrees + pitchDelta, MinPitchDegrees, MaxPitchDegrees);
+		m_suppressYawEvent = true;
+		YawSlider.Value = m_yawDegrees;
+		m_suppressYawEvent = false;
 		if (m_skin != null)
 		{
 			RenderModel();
@@ -461,7 +538,7 @@ public partial class MainView : UserControl
 		{
 			return;
 		}
-		SetImage(ModelPreviewImage, SkinPreview.Render3D(m_skin, OverlayCheck.IsChecked == true, 460, 540, m_yawDegrees, 18));
+		SetImage(ModelPreviewImage, SkinPreview.Render3D(m_skin, OverlayCheck.IsChecked == true, 460, 540, m_yawDegrees, m_pitchDegrees));
 	}
 
 	private void OnCompareSkinChanged(object? sender, SelectionChangedEventArgs e)
@@ -609,7 +686,7 @@ public partial class MainView : UserControl
 		try
 		{
 			ScModel model = GetModel(CurrentPlayerClass);
-			SetImage(ScModelPreviewImage, ScModelPreview.Render(atlas, model, 460, 540, m_yawDegrees, 18));
+			SetImage(ScModelPreviewImage, ScModelPreview.Render(atlas, model, 460, 540, m_yawDegrees, m_pitchDegrees));
 		}
 		catch (Exception ex)
 		{
