@@ -148,6 +148,7 @@ public partial class MainView : UserControl
 		this.AttachedToVisualTree += (_, _) => ApplyResponsiveLayout(Bounds.Width);
 		PlayerClassCombo.SelectionChanged += OnPlayerClassChanged;
 		AboutVersionText.Text = $"版本 {AppVersion.Full}（按构建时间自动生成）";
+		ProjectLinksList.ItemsSource = ProjectLinks.All;
 		// 所有 XAML 命名控件都已填充，才允许事件处理器访问列表与预览控件。
 		m_uiReady = true;
 		UpdateSpeedLabel(SpeedSlider.Value);
@@ -776,26 +777,17 @@ public partial class MainView : UserControl
 		AboutDrawer.IsPaneOpen = false;
 	}
 
-	/// <summary>项目地址本身就是链接，点击后经 TopLevel 启动器打开（桌面走系统默认浏览器，Android 走浏览器 Intent）。</summary>
+	/// <summary>平台卡片整块可点，链接由共享清单与启动器统一处理。</summary>
 	private async void OnProjectUrlPressed(object? sender, PointerPressedEventArgs e)
 	{
-		string? url = ProjectUrlText.Text;
-		if (string.IsNullOrWhiteSpace(url))
+		if ((sender as Border)?.DataContext is not ProjectLink link)
 		{
 			return;
 		}
-		try
+		bool opened = await ProjectLinkLauncher.OpenAsync(this, link.Url);
+		if (!opened)
 		{
-			TopLevel? topLevel = TopLevel.GetTopLevel(this);
-			bool opened = topLevel != null && await topLevel.Launcher.LaunchUriAsync(new Uri(url));
-			if (!opened)
-			{
-				SetStatus($"无法在浏览器打开项目地址：{url}");
-			}
-		}
-		catch (Exception ex)
-		{
-			SetStatus(AppLog.Failure("打开项目地址失败", $"打开项目主页失败 地址={url}", ex));
+			SetStatus($"无法在浏览器打开 {link.Platform}：{link.Url}");
 		}
 	}
 

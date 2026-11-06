@@ -1,11 +1,23 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="CharacterSkinsMC.App.MainView">
+	<UserControl.Styles>
+		<!-- 项目地址卡片：整块可点，悬停高亮；地址自动换行，窄抽屉也不会截断。 -->
+		<Style Selector="Border.projectLink">
+			<Setter Property="Background" Value="#FFF2F4F8" />
+			<Setter Property="CornerRadius" Value="6" />
+			<Setter Property="Padding" Value="10,7" />
+			<Setter Property="Cursor" Value="Hand" />
+		</Style>
+		<Style Selector="Border.projectLink:pointerover">
+			<Setter Property="Background" Value="#FFE4EAF4" />
+		</Style>
+	</UserControl.Styles>
 	<!-- 「关于」以右侧抽屉打开：桌面与 Android 统一交互，点抽屉外自动收起。 -->
 	<SplitView x:Name="AboutDrawer" DisplayMode="Overlay" PanePlacement="Right"
 	           OpenPaneLength="360" IsPaneOpen="False">
 		<SplitView.Pane>
-			<Grid RowDefinitions="Auto,*,Auto" Margin="14,14,14,14">
+			<Grid RowDefinitions="Auto,*" Margin="14">
 				<Grid Grid.Row="0" ColumnDefinitions="*,Auto">
 					<TextBlock Text="CharacterSkinsMC" FontSize="22" FontWeight="Bold" />
 					<Button Grid.Column="1" Content="关闭" Click="OnCloseAboutClick" />
@@ -13,19 +25,28 @@
 				<ScrollViewer Grid.Row="1" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto">
 					<StackPanel Spacing="8">
 						<TextBlock x:Name="AboutVersionText" FontSize="14" Foreground="#FF505864" TextWrapping="Wrap" />
-						<TextBlock TextWrapping="Wrap" Margin="0,8,0,0"
+						<!-- 三个托管平台放在内容流上方并允许滚动，不再挤在底部固定行里。 -->
+						<TextBlock Text="项目地址（点击卡片打开）" FontWeight="Bold" Margin="0,4,0,0" />
+						<ItemsControl x:Name="ProjectLinksList" x:CompileBindings="False">
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<Border Classes="projectLink" Margin="0,0,0,6"
+									        PointerPressed="OnProjectUrlPressed" ToolTip.Tip="点击在浏览器中打开">
+										<StackPanel Spacing="2">
+											<TextBlock Text="{Binding Platform}" FontWeight="Bold" />
+											<TextBlock Text="{Binding Url}" Foreground="#FF2060A0"
+											           TextDecorations="Underline" TextWrapping="Wrap" />
+										</StackPanel>
+									</Border>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+						<TextBlock TextWrapping="Wrap"
 						           Text="Minecraft 皮肤 → Survivalcraft（生存战争）皮肤转换工具。&#x0a;&#x0a;· 支持 16x / 32x / 64x / 128x 分辨率（64×32、64×64、128×128、256×256、512×512）&#x0a;· 宽手（Steve）与细手（Alex）手臂模型分开转译&#x0a;· 读取双层皮肤并合成第二层，输出 Survivalcraft .scskin 图集&#x0a;· 提供单张预览（MC 皮肤 / SC 图集 / 3D 模型）与批量转换" />
 						<TextBlock TextWrapping="Wrap" Foreground="#FF9098A4"
 						           Text="版本号按构建时间自动生成，格式为 年.月.日-时分（如 26.11.06-1421）。" />
 					</StackPanel>
 				</ScrollViewer>
-				<StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
-					<TextBlock Text="项目地址：" VerticalAlignment="Center" />
-					<TextBlock x:Name="ProjectUrlText" Text="https://cnb.cool/SurvivalcraftTool/CharacterSkinsMC"
-					           VerticalAlignment="Center" Foreground="#FF2060A0" TextDecorations="Underline"
-					           Cursor="Hand" PointerPressed="OnProjectUrlPressed"
-					           ToolTip.Tip="点击在浏览器中打开" />
-				</StackPanel>
 			</Grid>
 		</SplitView.Pane>
 		<Grid RowDefinitions="Auto,*,Auto">
