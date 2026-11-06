@@ -23,6 +23,14 @@
 					<CheckBox x:Name="GuidesCheck" Content="显示 UV 分区" IsChecked="True" />
 					<CheckBox x:Name="AutoRotateCheck" Content="自动旋转 3D 预览" />
 					<StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="6">
+						<TextBlock Text="SC 模型性别" VerticalAlignment="Center" />
+						<ComboBox x:Name="PlayerClassCombo" Width="120" SelectedIndex="0"
+						          SelectionChanged="OnPlayerClassChanged">
+							<ComboBoxItem Content="男" />
+							<ComboBoxItem Content="女" />
+						</ComboBox>
+					</StackPanel>
+					<StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="6">
 						<TextBlock Text="视角" VerticalAlignment="Center" />
 						<Slider x:Name="YawSlider" Minimum="0" Maximum="360" Value="35" Width="190"
 						        VerticalAlignment="Center" />
@@ -40,10 +48,36 @@
 						<Image x:Name="ScPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
 					</ScrollViewer>
 				</TabItem>
-				<TabItem Header="3D 预览">
-					<ScrollViewer>
-						<Image x:Name="ModelPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
-					</ScrollViewer>
+				<TabItem Header="MC 3D 预览">
+					<DockPanel>
+						<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
+						           Text="Minecraft 立方体人物模型，含第二层外壳；只用于查看输入皮肤，与右侧 SC 3D 预览相互独立。" />
+						<ScrollViewer>
+							<Image x:Name="ModelPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+						</ScrollViewer>
+					</DockPanel>
+				</TabItem>
+				<TabItem Header="SC 3D 预览">
+					<DockPanel>
+						<TextBlock DockPanel.Dock="Top" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
+						           Text="Survivalcraft 专属预览：使用真实 HumanMale / HumanFemale.dae 三角形与皮肤图集 UV 渲染，按左侧性别切换模型。" />
+						<ScrollViewer>
+							<Image x:Name="ScModelPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+						</ScrollViewer>
+					</DockPanel>
+				</TabItem>
+				<TabItem Header="SC 默认皮肤">
+					<Grid RowDefinitions="Auto,*" ColumnDefinitions="240,*">
+						<TextBlock Grid.Row="0" Grid.ColumnSpan="2" Margin="8,4" TextWrapping="Wrap" Foreground="#FF505864"
+						           Text="内置 8 张 Survivalcraft 默认人物皮肤（男 4 张 / 女 4 张）；按左侧「SC 模型性别」切换，选中后可在 SC 3D 预览中查看。" />
+						<StackPanel Grid.Row="1" Grid.Column="0" Margin="6,0" Spacing="4">
+							<ListBox x:Name="DefaultSkinList" SelectionChanged="OnDefaultSkinSelected" />
+							<Button Content="导出选中皮肤 .scskin" Click="OnExportDefaultSkinClick" />
+						</StackPanel>
+						<ScrollViewer Grid.Row="1" Grid.Column="1" Background="White">
+							<Image x:Name="DefaultSkinPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
+						</ScrollViewer>
+					</Grid>
 				</TabItem>
 			</TabControl>
 		</Grid>

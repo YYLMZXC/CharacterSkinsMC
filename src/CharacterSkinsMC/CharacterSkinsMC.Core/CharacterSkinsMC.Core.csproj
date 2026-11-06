@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<!-- 纯托管跨平台核心：桌面与 Android 共用；禁止引用 System.Drawing / WinForms。
 		     PNG 编解码由 StbImageSharp / StbImageWriteSharp 承担。 -->
@@ -14,5 +14,10 @@
 	<ItemGroup>
 		<PackageReference Include="StbImageSharp" Version="2.30.15" />
 		<PackageReference Include="StbImageWriteSharp" Version="1.16.7" />
+	</ItemGroup>
+	<ItemGroup>
+		<!-- 内置 8 张 Survivalcraft 默认人物皮肤与男女 DAE 模型，随程序集一起分发。 -->
+		<EmbeddedResource Include="Assets/DefaultSkins/*.png" />
+		<EmbeddedResource Include="Assets/Models/*.dae" />
 	</ItemGroup>
 </Project>

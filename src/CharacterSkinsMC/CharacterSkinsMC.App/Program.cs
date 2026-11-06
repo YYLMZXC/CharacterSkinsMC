@@ -47,7 +47,21 @@ internal static class Program
 		var modelPreview = SkinPreview.Render3D(skin, composeOverlay: true, 480, 560, 35, 18);
 		mcPreview.SavePng(Path.Combine(directory, "preview-mc.png"));
 		scPreview.SavePng(Path.Combine(directory, "preview-sc.png"));
-		modelPreview.SavePng(Path.Combine(directory, "preview-3d.png"));
+		modelPreview.SavePng(Path.Combine(directory, "preview-mc3d.png"));
+
+		ScDefaultSkin maleSkin = ScDefaultSkins.GetByClass(ScPlayerClass.Male)[0];
+		ScDefaultSkin femaleSkin = ScDefaultSkins.GetByClass(ScPlayerClass.Female)[0];
+		RgbaImage maleAtlas = ScDefaultSkins.LoadSkin(maleSkin);
+		RgbaImage femaleAtlas = ScDefaultSkins.LoadSkin(femaleSkin);
+		maleAtlas.SavePng(Path.Combine(directory, $"default-{maleSkin.DisplayName}.png"));
+		femaleAtlas.SavePng(Path.Combine(directory, $"default-{femaleSkin.DisplayName}.png"));
+		// 男模型贴转译结果、女模型贴内置默认皮肤，两条通道都能人工核对。
+		var scMale = ScModelPreview.Render(atlas, ScDefaultSkins.LoadModel(ScPlayerClass.Male), 480, 560, 35, 18);
+		var scFemale = ScModelPreview.Render(femaleAtlas, ScDefaultSkins.LoadModel(ScPlayerClass.Female), 480, 560, 35, 18);
+		scMale.SavePng(Path.Combine(directory, "preview-sc3d-male.png"));
+		scFemale.SavePng(Path.Combine(directory, "preview-sc3d-female.png"));
+		var scMaleDefault = ScModelPreview.Render(maleAtlas, ScDefaultSkins.LoadModel(ScPlayerClass.Male), 480, 560, 0, 18);
+		scMaleDefault.SavePng(Path.Combine(directory, "preview-sc3d-male-default.png"));
 		Console.WriteLine($"预览已导出到：{directory}");
 	}
 
@@ -165,11 +179,47 @@ internal static class Program
 			var scPreview = SkinPreview.RenderAtlas(atlas, 4, guides: true);
 			var modelPreview = SkinPreview.Render3D(skin, composeOverlay: true, 300, 400, 35, 18);
 
+			// 8 张内置默认皮肤与男女模型必须全部可用，且 SC 专属 3D 预览可渲染。
+			int defaultSkinCount = 0;
+			foreach (ScDefaultSkin defaultSkin in ScDefaultSkins.All)
+			{
+				RgbaImage defaultAtlas = ScDefaultSkins.LoadSkin(defaultSkin);
+				if (defaultAtlas.Width != 64 || defaultAtlas.Height != 64)
+				{
+					throw new InvalidOperationException($"内置皮肤 {defaultSkin.Id} 尺寸异常。");
+				}
+				int defaultOpaque = 0;
+				for (int y = 0; y < defaultAtlas.Height; y++)
+				{
+					for (int x = 0; x < defaultAtlas.Width; x++)
+					{
+						if (defaultAtlas.GetPixel(x, y).A > 0)
+						{
+							defaultOpaque++;
+						}
+					}
+				}
+				if (defaultOpaque == 0)
+				{
+					throw new InvalidOperationException($"内置皮肤 {defaultSkin.Id} 全透明。");
+				}
+				defaultSkinCount++;
+			}
+			int maleTriangles = ScDefaultSkins.LoadModel(ScPlayerClass.Male).Triangles.Count;
+			int femaleTriangles = ScDefaultSkins.LoadModel(ScPlayerClass.Female).Triangles.Count;
+			var scMalePreview = ScModelPreview.Render(atlas, ScPlayerClass.Male, 300, 400, 35, 18);
+			var scFemalePreview = ScModelPreview.Render(ScDefaultSkins.LoadSkin(ScDefaultSkins.All[4]),
+				ScPlayerClass.Female, 300, 400, 35, 18);
+			if (maleTriangles == 0 || femaleTriangles == 0 || scMalePreview.Width != 300 || scFemalePreview.Height != 400)
+			{
+				throw new InvalidOperationException("Survivalcraft 人物模型或 SC 3D 预览异常。");
+			}
+
 			if (atlas.Width != 64 || atlas.Height != 64 || reloaded.Width != 64 || reloaded.Height != 64 || opaquePixels == 0)
 			{
 				throw new InvalidOperationException("转译产物尺寸或内容不符合预期。");
 			}
-			Console.WriteLine($"自检通过：图集 {atlas.Width}×{atlas.Height}，非透明像素 {opaquePixels}，预览 {mcPreview.Width}×{mcPreview.Height} / {scPreview.Width}×{scPreview.Height} / {modelPreview.Width}×{modelPreview.Height}，产物 {scskinPath}");
+			Console.WriteLine($"自检通过：图集 {atlas.Width}×{atlas.Height}，非透明像素 {opaquePixels}，内置皮肤 {defaultSkinCount} 张，人物三角形 男={maleTriangles} 女={femaleTriangles}，MC 3D {modelPreview.Width}×{modelPreview.Height}，SC 3D {scMalePreview.Width}×{scMalePreview.Height}，产物 {scskinPath}");
 		}
 		finally
 		{

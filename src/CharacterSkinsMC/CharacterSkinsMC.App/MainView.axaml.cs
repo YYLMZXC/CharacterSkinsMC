@@ -24,9 +24,14 @@ public partial class MainView : UserControl
 	private string m_outputDirectory;
 	private MinecraftSkin? m_skin;
 	private RgbaImage? m_atlas;
+	private RgbaImage? m_selectedDefaultAtlas;
 	private double m_yawDegrees = 35;
 	private bool m_suppressYawEvent;
+	private readonly Dictionary<ScPlayerClass, ScModel> m_models = new();
 	private readonly DispatcherTimer m_timer;
+
+	private ScPlayerClass CurrentPlayerClass =>
+		PlayerClassCombo.SelectedIndex == 1 ? ScPlayerClass.Female : ScPlayerClass.Male;
 
 	public MainView()
 	{
@@ -66,6 +71,7 @@ public partial class MainView : UserControl
 			}
 		};
 		this.DetachedFromVisualTree += (_, _) => m_timer.Stop();
+		LoadDefaultSkins();
 		Rescan();
 	}
 
@@ -93,7 +99,7 @@ public partial class MainView : UserControl
 
 	private void OnTimerTick(object? sender, EventArgs e)
 	{
-		if (AutoRotateCheck.IsChecked != true || m_skin == null)
+		if (AutoRotateCheck.IsChecked != true || (m_skin == null && m_selectedDefaultAtlas == null))
 		{
 			return;
 		}
@@ -101,7 +107,11 @@ public partial class MainView : UserControl
 		m_suppressYawEvent = true;
 		YawSlider.Value = m_yawDegrees;
 		m_suppressYawEvent = false;
-		RenderModel();
+		if (m_skin != null)
+		{
+			RenderModel();
+		}
+		RenderScModel();
 	}
 
 	private void OnYawSliderChanged(double value)
@@ -111,7 +121,11 @@ public partial class MainView : UserControl
 			return;
 		}
 		m_yawDegrees = value;
-		RenderModel();
+		if (m_skin != null)
+		{
+			RenderModel();
+		}
+		RenderScModel();
 	}
 
 	private void OnFileSelected(object? sender, SelectionChangedEventArgs e) => OpenSelected();
@@ -218,6 +232,8 @@ public partial class MainView : UserControl
 			McArmModel armModel = SlimCheck.IsChecked == true ? McArmModel.Slim : McArmModel.Classic;
 			m_skin = MinecraftSkin.Load(path, armModel);
 			m_atlas = MinecraftSkinConverter.Convert(m_skin, OverlayCheck.IsChecked == true);
+			// 选中转换皮肤后，SC 3D 预览回到「当前转换结果」；选中内置皮肤时另由 OnDefaultSkinSelected 覆盖。
+			m_selectedDefaultAtlas = null;
 			UpdatePreviews();
 			SetStatus($"{Path.GetFileName(path)} | {m_skin.SourceDescription} | 手臂={(m_skin.ArmModel == McArmModel.Slim ? "Slim" : "Classic")} | 第二层={(m_skin.HasOverlay && OverlayCheck.IsChecked == true ? "已合成" : "未合成")} | 输出={m_outputDirectory}");
 		}
@@ -238,6 +254,7 @@ public partial class MainView : UserControl
 		SetImage(McPreviewImage, SkinPreview.RenderMcSkin(m_skin, 7, GuidesCheck.IsChecked == true));
 		SetImage(ScPreviewImage, SkinPreview.RenderAtlas(m_atlas, 7, GuidesCheck.IsChecked == true));
 		RenderModel();
+		RenderScModel();
 	}
 
 	private void RenderModel()
@@ -249,6 +266,113 @@ public partial class MainView : UserControl
 		SetImage(ModelPreviewImage, SkinPreview.Render3D(m_skin, OverlayCheck.IsChecked == true, 460, 540, m_yawDegrees, 18));
 	}
 
+	/// <summary>按当前性别填充内置默认皮肤列表，选中第一张。</summary>
+	private void LoadDefaultSkins()
+	{
+		DefaultSkinList.Items.Clear();
+		foreach (ScDefaultSkin skin in ScDefaultSkins.GetByClass(CurrentPlayerClass))
+		{
+			DefaultSkinList.Items.Add(skin.Caption);
+		}
+		if (DefaultSkinList.Items.Count > 0)
+		{
+			DefaultSkinList.SelectedIndex = 0;
+		}
+	}
+
+	private void OnPlayerClassChanged(object? sender, SelectionChangedEventArgs e)
+	{
+		LoadDefaultSkins();
+		RenderScModel();
+	}
+
+	private ScDefaultSkin? CurrentDefaultSkin()
+	{
+		if (DefaultSkinList.SelectedItem is not string caption)
+		{
+			return null;
+		}
+		return ScDefaultSkins.All.FirstOrDefault(skin => string.Equals(skin.Caption, caption, StringComparison.Ordinal));
+	}
+
+	private void OnDefaultSkinSelected(object? sender, SelectionChangedEventArgs e)
+	{
+		ScDefaultSkin? skin = CurrentDefaultSkin();
+		if (skin == null)
+		{
+			m_selectedDefaultAtlas = null;
+			SetImage(DefaultSkinPreviewImage, null);
+			RenderScModel();
+			return;
+		}
+		try
+		{
+			m_selectedDefaultAtlas = ScDefaultSkins.LoadSkin(skin);
+			SetImage(DefaultSkinPreviewImage, SkinPreview.RenderAtlas(m_selectedDefaultAtlas, 7, GuidesCheck.IsChecked == true));
+			RenderScModel();
+			SetStatus($"内置皮肤 {skin.Caption} | SC 模型={(CurrentPlayerClass == ScPlayerClass.Male ? "男" : "女")} | SC 3D 预览已切换为该皮肤 | 输出={m_outputDirectory}");
+		}
+		catch (Exception ex)
+		{
+			Trace.WriteLine($"[CharacterSkinsMC] 内置皮肤读取失败 标识={skin.Id} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
+			SetStatus($"内置皮肤读取失败：{ex.Message}");
+			m_selectedDefaultAtlas = null;
+		}
+	}
+
+	/// <summary>SC 专属 3D 预览：优先显示选中的内置默认皮肤，否则显示当前转换结果。</summary>
+	private void RenderScModel()
+	{
+		RgbaImage? atlas = m_selectedDefaultAtlas ?? m_atlas;
+		if (atlas == null)
+		{
+			SetImage(ScModelPreviewImage, null);
+			return;
+		}
+		try
+		{
+			ScModel model = GetModel(CurrentPlayerClass);
+			SetImage(ScModelPreviewImage, ScModelPreview.Render(atlas, model, 460, 540, m_yawDegrees, 18));
+		}
+		catch (Exception ex)
+		{
+			Trace.WriteLine($"[CharacterSkinsMC] SC 模型预览失败 性别={CurrentPlayerClass} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
+			SetStatus($"SC 模型预览失败：{ex.Message}");
+			SetImage(ScModelPreviewImage, null);
+		}
+	}
+
+	private ScModel GetModel(ScPlayerClass playerClass)
+	{
+		if (!m_models.TryGetValue(playerClass, out ScModel? model))
+		{
+			model = ScDefaultSkins.LoadModel(playerClass);
+			m_models[playerClass] = model;
+		}
+		return model;
+	}
+
+	private void OnExportDefaultSkinClick(object? sender, RoutedEventArgs e)
+	{
+		ScDefaultSkin? skin = CurrentDefaultSkin();
+		if (skin == null)
+		{
+			SetStatus("请先选择一张内置默认皮肤。");
+			return;
+		}
+		string output = Path.Combine(m_outputDirectory, $"Survivalcraft-{skin.DisplayName}.scskin");
+		try
+		{
+			string saved = ScDefaultSkins.SaveSkin(skin, output);
+			SetStatus($"已导出内置皮肤：{saved}");
+		}
+		catch (Exception ex)
+		{
+			Trace.WriteLine($"[CharacterSkinsMC] 导出内置皮肤失败 路径={output} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
+			SetStatus($"导出内置皮肤失败：{ex.Message}");
+		}
+	}
+
 	private void ClearPreviews()
 	{
 		m_skin = null;
@@ -256,6 +380,8 @@ public partial class MainView : UserControl
 		SetImage(McPreviewImage, null);
 		SetImage(ScPreviewImage, null);
 		SetImage(ModelPreviewImage, null);
+		// 内置默认皮肤与 SC 3D 预览不依赖输入目录，保持可见。
+		RenderScModel();
 	}
 
 	/// <summary>RgbaImage 经 PNG 解码为 Avalonia 位图；替换前释放旧图。</summary>

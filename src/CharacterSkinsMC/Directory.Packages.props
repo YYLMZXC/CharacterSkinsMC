@@ -1,0 +1,7 @@
+<Project>
+	<!-- 本工具是独立仓库，包版本由各 csproj 自带；此处遮蔽主仓根的中央包管理配置，
+	     避免工具工程向上命中主仓的 Directory.Packages.props 后触发 NU1008。 -->
+	<PropertyGroup>
+		<ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+	</PropertyGroup>
+</Project>

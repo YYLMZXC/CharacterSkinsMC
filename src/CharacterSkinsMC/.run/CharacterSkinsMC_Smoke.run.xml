@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component name="ProjectRunConfigurationManager">
-  <!-- 无界面自检：验证皮肤归一化、转译、落盘与三种预览渲染 -->
+  <!-- 无界面自检：验证皮肤归一化、转译、落盘、8 张内置皮肤与两套 3D 预览渲染 -->
   <configuration default="false" name="皮肤转换工具 自检" type="DotNetProject" factoryName=".NET Project">
     <option name="EXE_PATH" value="" />
     <option name="PROGRAM_PARAMETERS" value="--smoke" />
