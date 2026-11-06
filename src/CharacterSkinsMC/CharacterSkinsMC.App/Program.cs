@@ -62,7 +62,10 @@ internal static class Program
 		scFemale.SavePng(Path.Combine(directory, "preview-sc3d-female.png"));
 		var scMaleDefault = ScModelPreview.Render(maleAtlas, ScDefaultSkins.LoadModel(ScPlayerClass.Male), 480, 560, 0, 18);
 		scMaleDefault.SavePng(Path.Combine(directory, "preview-sc3d-male-default.png"));
-		Console.WriteLine($"预览已导出到：{directory}");
+		ScAtlasDiff comparison = ScAtlasComparison.Compare(atlas, maleAtlas);
+		ScAtlasComparison.RenderDifference(atlas, maleAtlas, 6, true)
+			.SavePng(Path.Combine(directory, "preview-atlas-diff.png"));
+		Console.WriteLine($"预览已导出到：{directory}；与 {maleSkin.Caption} 差异 {comparison.DifferentPixels}/{comparison.TotalPixels} 像素");
 	}
 
 	private static void BuildSampleSkin(string path)
@@ -215,11 +218,23 @@ internal static class Program
 				throw new InvalidOperationException("Survivalcraft 人物模型或 SC 3D 预览异常。");
 			}
 
+			// 图集对比：自身对比必须零差异，与内置默认皮肤对比必须能统计并渲染差异图。
+			RgbaImage referenceForDiff = ScDefaultSkins.LoadSkin(ScDefaultSkins.All[0]);
+			ScAtlasDiff selfComparison = ScAtlasComparison.Compare(atlas, atlas);
+			ScAtlasDiff defaultComparison = ScAtlasComparison.Compare(atlas, referenceForDiff);
+			RgbaImage differencePreview = ScAtlasComparison.RenderDifference(atlas, referenceForDiff, 2, true);
+			if (selfComparison.DifferentPixels != 0 || selfComparison.TotalPixels != 4096 ||
+				defaultComparison.TotalPixels != 4096 || defaultComparison.DifferentPixels < 0 ||
+				defaultComparison.DifferentPixels > 4096 || differencePreview.Width != 128)
+			{
+				throw new InvalidOperationException("图集对比统计或差异图渲染异常。");
+			}
+
 			if (atlas.Width != 64 || atlas.Height != 64 || reloaded.Width != 64 || reloaded.Height != 64 || opaquePixels == 0)
 			{
 				throw new InvalidOperationException("转译产物尺寸或内容不符合预期。");
 			}
-			Console.WriteLine($"自检通过：图集 {atlas.Width}×{atlas.Height}，非透明像素 {opaquePixels}，内置皮肤 {defaultSkinCount} 张，人物三角形 男={maleTriangles} 女={femaleTriangles}，MC 3D {modelPreview.Width}×{modelPreview.Height}，SC 3D {scMalePreview.Width}×{scMalePreview.Height}，产物 {scskinPath}");
+			Console.WriteLine($"自检通过：图集 {atlas.Width}×{atlas.Height}，非透明像素 {opaquePixels}，内置皮肤 {defaultSkinCount} 张，人物三角形 男={maleTriangles} 女={femaleTriangles}，MC 3D {modelPreview.Width}×{modelPreview.Height}，SC 3D {scMalePreview.Width}×{scMalePreview.Height}，图集差异 {defaultComparison.DifferentPixels}/{defaultComparison.TotalPixels}，产物 {scskinPath}");
 		}
 		finally
 		{

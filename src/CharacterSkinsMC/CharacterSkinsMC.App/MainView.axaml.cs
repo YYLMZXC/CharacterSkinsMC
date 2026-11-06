@@ -25,6 +25,8 @@ public partial class MainView : UserControl
 	private MinecraftSkin? m_skin;
 	private RgbaImage? m_atlas;
 	private RgbaImage? m_selectedDefaultAtlas;
+	private RgbaImage? m_referenceAtlas;
+	private ScDefaultSkin? m_referenceSkin;
 	private double m_yawDegrees = 35;
 	private bool m_suppressYawEvent;
 	private bool m_uiReady;
@@ -76,7 +78,26 @@ public partial class MainView : UserControl
 		// 所有 XAML 命名控件都已填充，才允许事件处理器访问列表与预览控件。
 		m_uiReady = true;
 		PlayerClassCombo.SelectedIndex = 0;
+		InitializeComparison();
 		Rescan();
+	}
+
+	/// <summary>对比控件的事件与初始项同样延后到界面就绪之后，避免 XAML 初始化期空引用。</summary>
+	private void InitializeComparison()
+	{
+		CompareCheck.PropertyChanged += (_, e) =>
+		{
+			if (e.Property == CheckBox.IsCheckedProperty)
+			{
+				UpdateAtlasComparison();
+			}
+		};
+		CompareSkinCombo.SelectionChanged += OnCompareSkinChanged;
+		foreach (ScDefaultSkin skin in ScDefaultSkins.All)
+		{
+			CompareSkinCombo.Items.Add(skin.Caption);
+		}
+		CompareSkinCombo.SelectedIndex = 0;
 	}
 
 	/// <summary>桌面把数据目录放在程序旁，Android 等沙盒平台回退到应用私有数据目录。</summary>
@@ -259,6 +280,7 @@ public partial class MainView : UserControl
 		SetImage(ScPreviewImage, SkinPreview.RenderAtlas(m_atlas, 7, GuidesCheck.IsChecked == true));
 		RenderModel();
 		RenderScModel();
+		UpdateAtlasComparison();
 	}
 
 	private void RenderModel()
@@ -268,6 +290,69 @@ public partial class MainView : UserControl
 			return;
 		}
 		SetImage(ModelPreviewImage, SkinPreview.Render3D(m_skin, OverlayCheck.IsChecked == true, 460, 540, m_yawDegrees, 18));
+	}
+
+	private void OnCompareSkinChanged(object? sender, SelectionChangedEventArgs e)
+	{
+		if (!m_uiReady)
+		{
+			return;
+		}
+		RefreshReferenceAtlas();
+		UpdateAtlasComparison();
+	}
+
+	private void RefreshReferenceAtlas()
+	{
+		if (CompareSkinCombo.SelectedItem is not string caption)
+		{
+			m_referenceSkin = null;
+			m_referenceAtlas = null;
+			return;
+		}
+		m_referenceSkin = ScDefaultSkins.All.FirstOrDefault(skin => string.Equals(skin.Caption, caption, StringComparison.Ordinal));
+		try
+		{
+			m_referenceAtlas = m_referenceSkin == null ? null : ScDefaultSkins.LoadSkin(m_referenceSkin);
+		}
+		catch (Exception ex)
+		{
+			Trace.WriteLine($"[CharacterSkinsMC] 对照皮肤读取失败 标识={caption} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
+			m_referenceAtlas = null;
+			SetStatus($"对照皮肤读取失败：{ex.Message}");
+		}
+	}
+
+	/// <summary>SC 图集对比：转译结果、内置默认皮肤、差异高亮三栏并列，并给出差异统计。</summary>
+	private void UpdateAtlasComparison()
+	{
+		bool enabled = CompareCheck.IsChecked == true && m_atlas != null && m_referenceAtlas != null;
+		SingleAtlasView.IsVisible = !enabled;
+		CompareAtlasView.IsVisible = enabled;
+		if (!enabled)
+		{
+			SetImage(CompareCurrentImage, null);
+			SetImage(CompareReferenceImage, null);
+			SetImage(CompareDiffImage, null);
+			CompareStats.Text = m_referenceAtlas == null ? "未选择对照皮肤。" : "尚无转译结果。";
+			return;
+		}
+		RgbaImage current = m_atlas!;
+		RgbaImage reference = m_referenceAtlas!;
+		bool guides = GuidesCheck.IsChecked == true;
+		try
+		{
+			SetImage(CompareCurrentImage, SkinPreview.RenderAtlas(current, 5, guides));
+			SetImage(CompareReferenceImage, SkinPreview.RenderAtlas(reference, 5, guides));
+			ScAtlasDiff diff = ScAtlasComparison.Compare(current, reference);
+			SetImage(CompareDiffImage, ScAtlasComparison.RenderDifference(current, reference, 5, guides));
+			CompareStats.Text = $"对照 {m_referenceSkin?.Caption ?? "默认皮肤"}：不同 {diff.DifferentPixels}/{diff.TotalPixels} 像素，相似度 {diff.Similarity:P1}";
+		}
+		catch (Exception ex)
+		{
+			Trace.WriteLine($"[CharacterSkinsMC] 图集对比失败 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
+			CompareStats.Text = $"图集对比失败：{ex.Message}";
+		}
 	}
 
 	/// <summary>按当前性别填充内置默认皮肤列表，选中第一张。</summary>
@@ -398,6 +483,7 @@ public partial class MainView : UserControl
 		SetImage(ModelPreviewImage, null);
 		// 内置默认皮肤与 SC 3D 预览不依赖输入目录，保持可见。
 		RenderScModel();
+		UpdateAtlasComparison();
 	}
 
 	/// <summary>RgbaImage 经 PNG 解码为 Avalonia 位图；替换前释放旧图。</summary>
