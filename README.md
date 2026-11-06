@@ -28,7 +28,7 @@ Minecraft 皮肤 → Survivalcraft（生存战争）皮肤转换工具。
 版本号按**构建时间**自动生成，格式 `年.月.日-时分`（如 `26.11.06-1421`）：
 
 - 由根目录 `src/CharacterSkinsMC/Directory.Build.props` 在每次构建时以 MSBuild 属性生成，写入程序集的 `InformationalVersion`
-- 桌面端：主界面工具栏「关于」按钮弹窗展示
+- 桌面端：主窗口标题与「关于」窗口标题均附带大版本号（日期段），「关于」弹窗展示完整版本号；项目地址可直接点击打开
 - Android 端：同时写入 APK 的 `versionName`，可在系统应用信息中查看；应用内点「关于」会在状态栏显示
 
 ## 构建

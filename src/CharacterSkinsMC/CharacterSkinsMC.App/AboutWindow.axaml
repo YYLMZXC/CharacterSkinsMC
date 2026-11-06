@@ -15,8 +15,9 @@
 		<StackPanel Orientation="Horizontal" Spacing="8">
 			<TextBlock Text="项目地址：" VerticalAlignment="Center" />
 			<TextBlock x:Name="ProjectUrlText" Text="https://cnb.cool/SurvivalcraftTool/CharacterSkinsMC"
-			           VerticalAlignment="Center" Foreground="#FF2060A0" />
-			<Button Content="打开主页" Click="OnOpenProjectUrlClick" />
+			           VerticalAlignment="Center" Foreground="#FF2060A0" TextDecorations="Underline"
+			           Cursor="Hand" PointerPressed="OnProjectUrlPressed"
+			           ToolTip.Tip="点击在浏览器中打开" />
 		</StackPanel>
 		<Button Content="确定" Click="OnCloseClick" HorizontalAlignment="Right" Margin="0,8,0,0" />
 	</StackPanel>

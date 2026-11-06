@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 
@@ -40,16 +41,22 @@ public partial class AboutWindow : Window
 	/// <summary>大版本号：取版本号「-」前的日期段，如 26.11.06。</summary>
 	public static string GetMajorVersion(string version) => version.Split('-')[0];
 
-	private void OnOpenProjectUrlClick(object? sender, RoutedEventArgs e)
+	/// <summary>项目地址本身就是链接，点击后用系统默认浏览器打开。</summary>
+	private void OnProjectUrlPressed(object? sender, PointerPressedEventArgs e)
 	{
+		string? url = ProjectUrlText.Text;
+		if (string.IsNullOrWhiteSpace(url))
+		{
+			return;
+		}
 		try
 		{
-			var psi = new ProcessStartInfo(ProjectUrlText.Text ?? string.Empty) { UseShellExecute = true };
-			Process.Start(psi);
+			Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine($"[CharacterSkinsMC] 打开项目主页失败 地址={ProjectUrlText.Text} 消息={ex.Message}");
+			// 外部浏览器不可用属于既定降级通道：保持窗口可用与链接可读，仅记录完整失败上下文。
+			Trace.WriteLine($"[CharacterSkinsMC] 打开项目主页失败 地址={url} 类型={ex.GetType().FullName} 消息={ex.Message}\n{ex}");
 		}
 	}
 

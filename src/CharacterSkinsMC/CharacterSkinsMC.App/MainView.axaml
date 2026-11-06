@@ -62,28 +62,29 @@
 							<CheckBox x:Name="CompareCheck" Content="与默认皮肤对比" IsChecked="True" />
 							<TextBlock Text="对照皮肤" VerticalAlignment="Center" />
 							<ComboBox x:Name="CompareSkinCombo" Width="190" />
-							<TextBlock x:Name="CompareStats" VerticalAlignment="Center" Foreground="#FF505864" TextWrapping="Wrap" />
 						</StackPanel>
+						<TextBlock DockPanel.Dock="Top" x:Name="CompareStats" Margin="6,0,6,4" TextWrapping="Wrap"
+						           Foreground="#FF505864" />
 						<Grid>
 							<ScrollViewer x:Name="SingleAtlasView" Background="White">
 								<Image x:Name="ScPreviewImage" Stretch="None" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
 							</ScrollViewer>
 							<ScrollViewer x:Name="CompareAtlasView" Background="White" IsVisible="False"
-							              HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-								<StackPanel Orientation="Horizontal" Margin="8" Spacing="12">
-									<StackPanel Spacing="4">
+							              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+								<Grid Margin="8" ColumnDefinitions="*,*,*" VerticalAlignment="Top">
+									<StackPanel Grid.Column="0" Margin="0,0,8,0" Spacing="4">
 										<TextBlock Text="转译结果" FontWeight="Bold" />
-										<Image x:Name="CompareCurrentImage" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
+										<Image x:Name="CompareCurrentImage" Stretch="Uniform" VerticalAlignment="Top" />
 									</StackPanel>
-									<StackPanel Spacing="4">
+									<StackPanel Grid.Column="1" Margin="0,0,8,0" Spacing="4">
 										<TextBlock Text="内置默认皮肤" FontWeight="Bold" />
-										<Image x:Name="CompareReferenceImage" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
+										<Image x:Name="CompareReferenceImage" Stretch="Uniform" VerticalAlignment="Top" />
 									</StackPanel>
-									<StackPanel Spacing="4">
+									<StackPanel Grid.Column="2" Spacing="4">
 										<TextBlock Text="差异（灰=一致，红=不同）" FontWeight="Bold" />
-										<Image x:Name="CompareDiffImage" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
+										<Image x:Name="CompareDiffImage" Stretch="Uniform" VerticalAlignment="Top" />
 									</StackPanel>
-								</StackPanel>
+								</Grid>
 							</ScrollViewer>
 						</Grid>
 					</DockPanel>
