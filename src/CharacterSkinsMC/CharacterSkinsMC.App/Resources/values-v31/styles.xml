@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!-- Android 12+ 系统 SplashScreen：底色与开屏图一致，图标沿用清单的 android:icon。
+	     同名 style 会整体覆盖 values 版本，故 windowBackground 需重复声明。 -->
+	<style name="Theme.CharacterSkinsMC.Splash" parent="Theme.CharacterSkinsMC">
+		<item name="android:windowBackground">@drawable/splash_background</item>
+		<item name="android:windowSplashScreenBackground">@color/splash_background</item>
+	</style>
+</resources>

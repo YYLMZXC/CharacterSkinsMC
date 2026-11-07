@@ -14,13 +14,16 @@ namespace CharacterSkinsMC.App.Platforms.Android;
 // 用平台 Theme.Material 会抛 IllegalStateException 导致启动即闪退。
 [Activity(
 	Label = "CharacterSkinsMC",
-	Theme = "@style/Theme.AppCompat.Light.NoActionBar",
+	// 冷启动由 Splash 主题绘制开屏图；该主题仍继承 AppCompat，不会触发 setContentView 闪退。
+	Theme = "@style/Theme.CharacterSkinsMC.Splash",
 	MainLauncher = true,
 	ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
 public class MainActivity : AvaloniaMainActivity
 {
 	protected override void OnCreate(Bundle? savedInstanceState)
 	{
+		// 启动预览窗口已按 Splash 主题绘制开屏图，内容加载前恢复应用主题，避免启动图残留。
+		SetTheme(global::CharacterSkinsMC.App.Resource.Style.Theme_CharacterSkinsMC);
 		base.OnCreate(savedInstanceState);
 		// targetSdk 35+（Android 15 起）强制 edge-to-edge，内容会延伸到状态栏与导航栏下面，
 		// 底部按钮/状态栏文字被系统导航栏挡住。统一改为：内容铺满全屏，

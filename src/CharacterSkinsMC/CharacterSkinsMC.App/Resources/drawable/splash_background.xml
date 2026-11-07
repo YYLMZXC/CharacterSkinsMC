@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 冷启动窗口背景：纯色底 + 居中开屏图，避免 Activity 内容加载前出现白屏。 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+	<item android:drawable="@color/splash_background" />
+	<item android:width="200dp" android:height="200dp" android:gravity="center"
+	      android:drawable="@drawable/splash_logo" />
+</layer-list>

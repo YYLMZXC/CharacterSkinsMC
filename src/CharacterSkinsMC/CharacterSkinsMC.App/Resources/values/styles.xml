@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!-- 必须保持 AppCompat 继承链：Avalonia 12 的 AvaloniaMainActivity 继承 AppCompatActivity，
+	     换成平台 Theme.Material 会在 setContentView 阶段闪退。 -->
+	<style name="Theme.CharacterSkinsMC" parent="Theme.AppCompat.Light.NoActionBar">
+		<!-- 与开屏图同色：OnCreate 切回本主题后窗口底色不闪白。 -->
+		<item name="android:windowBackground">@color/splash_background</item>
+	</style>
+	<!-- 冷启动主题：仅用于启动预览窗口，OnCreate 中切回 Theme.CharacterSkinsMC。 -->
+	<style name="Theme.CharacterSkinsMC.Splash" parent="Theme.CharacterSkinsMC">
+		<item name="android:windowBackground">@drawable/splash_background</item>
+	</style>
+</resources>
