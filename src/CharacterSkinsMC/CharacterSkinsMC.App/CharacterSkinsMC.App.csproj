@@ -10,6 +10,11 @@
 		<RootNamespace>CharacterSkinsMC.App</RootNamespace>
 		<IsPackable>false</IsPackable>
 	</PropertyGroup>
+	<PropertyGroup Condition="'$(TargetFramework)' == '$(GlobalTargetFramework)'">
+		<!-- Windows exe 图标；Avalonia 12 的 AvaloniaIncludeApplicationIconAsWindowIcon 默认开启，
+		     同一 ico 会自动嵌入并作为所有 Window（主窗口/关于窗口）的默认图标。 -->
+		<ApplicationIcon>Assets/AppIcon.ico</ApplicationIcon>
+	</PropertyGroup>
 	<PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
 		<OutputType>Exe</OutputType>
 		<AndroidApplication>true</AndroidApplication>
