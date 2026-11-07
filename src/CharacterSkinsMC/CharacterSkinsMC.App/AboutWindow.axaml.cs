@@ -19,8 +19,8 @@ public partial class AboutWindow : Window
 	{
 		InitializeComponent();
 		VersionText.Text = $"版本 {AppVersion.Full}（按构建时间自动生成）";
-		// 标题显示大版本号（日期部分），如「关于 CharacterSkinsMC 26.11.06」。
-		Title = $"关于 CharacterSkinsMC {AppVersion.Major}";
+		// 标题显示大版本号（日期部分），如「关于 MC皮肤转SC 26.11.06」。
+		Title = $"关于 MC皮肤转SC {AppVersion.Major}";
 		PlatformLinks.ItemsSource = ProjectLinks.All;
 		if (owner != null)
 		{

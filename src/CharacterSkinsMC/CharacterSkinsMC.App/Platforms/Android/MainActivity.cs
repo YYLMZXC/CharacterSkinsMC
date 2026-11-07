@@ -13,7 +13,7 @@ namespace CharacterSkinsMC.App.Platforms.Android;
 // 基类继承 AppCompatActivity，onCreate 里 setContentView 要求 AppCompat 主题；
 // 用平台 Theme.Material 会抛 IllegalStateException 导致启动即闪退。
 [Activity(
-	Label = "CharacterSkinsMC",
+	Label = "MC皮肤转SC",
 	// 冷启动由 Splash 主题绘制开屏图；该主题仍继承 AppCompat，不会触发 setContentView 闪退。
 	Theme = "@style/Theme.CharacterSkinsMC.Splash",
 	MainLauncher = true,

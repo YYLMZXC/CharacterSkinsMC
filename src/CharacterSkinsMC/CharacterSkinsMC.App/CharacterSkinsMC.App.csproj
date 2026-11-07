@@ -21,7 +21,8 @@
 		<!-- androidx.lifecycle 系列要求 minSdk ≥ 24（.NET 11 Android SDK 下限，旧 23 报 XA4216）。 -->
 		<SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
 		<ApplicationId>com.sc.characterskinsmc</ApplicationId>
-		<ApplicationTitle>CharacterSkinsMC</ApplicationTitle>
+		<!-- Android 系统层显示名（启动器 / 应用信息），与应用内标题统一。 -->
+		<ApplicationTitle>MC皮肤转SC</ApplicationTitle>
 		<!-- Android 设置页展示的版本名取构建时间版本号（Directory.Build.props 生成的 yy.MM.dd-HHmm）。 -->
 		<AndroidVersionName>$(Version)</AndroidVersionName>
 		<AndroidManifest>Platforms/Android/AndroidManifest.xml</AndroidManifest>

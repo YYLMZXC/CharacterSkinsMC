@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="CharacterSkinsMC.App.AboutWindow"
-        Title="关于 CharacterSkinsMC"
+        Title="关于 MC皮肤转SC"
         Width="540" MinHeight="320" CanResize="False"
         WindowStartupLocation="CenterOwner"
         SizeToContent="Height">
@@ -18,7 +18,7 @@
 		</Style>
 	</Window.Styles>
 	<StackPanel Margin="16" Spacing="8">
-		<TextBlock Text="CharacterSkinsMC" FontSize="22" FontWeight="Bold" />
+		<TextBlock Text="MC皮肤转SC" FontSize="22" FontWeight="Bold" />
 		<TextBlock x:Name="VersionText" FontSize="14" Foreground="#FF505864" />
 		<TextBlock Text="项目地址（点击卡片打开）" FontWeight="Bold" Margin="0,8,0,2" />
 		<ItemsControl x:Name="PlatformLinks" x:CompileBindings="False">
